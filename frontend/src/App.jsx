@@ -1,4 +1,4 @@
-import React, { Component } from 'react'
+﻿import React, { Component } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Sidebar from './components/Sidebar'
@@ -17,10 +17,8 @@ import Help from './pages/Help'
 import Modal from './components/ui/Modal'
 import ToastContainer from './components/ui/Toast'
 import useAuthStore from './store/useAuthStore'
+import useUIStore from './store/useUIStore'
 
-/**
- * Global Error Boundary: Prevents any runtime render error from blanking the screen.
- */
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props)
@@ -113,23 +111,32 @@ class ErrorBoundary extends Component {
   }
 }
 
-/**
- * Protected Platform Layout:
- * Enforces session check and renders Navbar + Sidebar + Inner Page.
- */
 function ProtectedRoute({ children }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }
 
+  const sidebarWidth = sidebarCollapsed ? 70 : 248
+
   return (
     <div className="app-shell">
       <Navbar />
-      <div className="app-body">
+      <div className="app-body" style={{ marginTop: 'var(--nav-h)' }}>
         <Sidebar />
-        <main className="page-content">{children}</main>
+        <main
+          className="page-content"
+          style={{
+            marginLeft: sidebarWidth,
+            transition: 'margin-left 250ms cubic-bezier(0.16, 1, 0.3, 1)',
+            minHeight: 'calc(100vh - var(--nav-h))',
+            background: 'var(--bg)'
+          }}
+        >
+          {children}
+        </main>
       </div>
     </div>
   )
