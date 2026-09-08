@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # 1. Python AI NLP Engine
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: ../deployment/Dockerfile.ai
+    container_name: crimenet-ai
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    networks:
+      - crimenet-network
+
+  # 2. Spring Boot Core Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../deployment/Dockerfile.backend
+    container_name: crimenet-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - AI_SERVICE_URL=http://ai-service:8000
+    depends_on:
+      - ai-service
+    restart: unless-stopped
+    networks:
+      - crimenet-network
+
+  # 3. React Frontend with Nginx Reverse Proxy
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../deployment/Dockerfile.frontend
+    container_name: crimenet-frontend
+    ports:
+      - "80:80"
+      - "5173:80"
+    depends_on:
+      - backend
+      - ai-service
+    restart: unless-stopped
+    networks:
+      - crimenet-network
+
+networks:
+  crimenet-network:
+    driver: bridge

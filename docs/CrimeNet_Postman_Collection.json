@@ -1,0 +1,333 @@
+{
+	"info": {
+		"_postman_id": "crimenet-api-collection-2026",
+		"name": "CrimeNet API — SIH26189",
+		"description": "Comprehensive Postman collection for Criminal Network Analysis Platform (Spring Boot Backend + Python AI Microservice). Includes document parsing, entity extraction, D3 graph data, case management, and AI NLP endpoints.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "backend_url",
+			"value": "http://localhost:8080/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "ai_url",
+			"value": "http://localhost:8000/api/ai",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Spring Boot Backend",
+			"item": [
+				{
+					"name": "Health & Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{backend_url}}/stats",
+							"host": [
+								"{{backend_url}}"
+							],
+							"path": [
+								"stats"
+							]
+						},
+						"description": "Fetch dashboard metrics (total entities, relations, high risk nodes, active threats)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Full Graph (D3 Nodes & Links)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{backend_url}}/graph",
+							"host": [
+								"{{backend_url}}"
+							],
+							"path": [
+								"graph"
+							]
+						},
+						"description": "Returns all nodes and links formatted ready for D3 force directed graph visualization."
+					},
+					"response": []
+				},
+				{
+					"name": "List All Entities",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{backend_url}}/entities",
+							"host": [
+								"{{backend_url}}"
+							],
+							"path": [
+								"entities"
+							],
+							"query": [
+								{
+									"key": "risk",
+									"value": "high",
+									"disabled": true
+								},
+								{
+									"key": "type",
+									"value": "Person",
+									"disabled": true
+								}
+							]
+						},
+						"description": "List extracted criminal entities. Filterable by ?risk=high and/or ?type=Person|Organization|Location|Phone|Vehicle."
+					},
+					"response": []
+				},
+				{
+					"name": "Search Entities",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{backend_url}}/entities/search?q=Marco",
+							"host": [
+								"{{backend_url}}"
+							],
+							"path": [
+								"entities",
+								"search"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "Marco",
+									"description": "Query keyword to search across names, roles, and locations"
+								}
+							]
+						},
+						"description": "Full-text search across entity database."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Entity by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{backend_url}}/entities/p01",
+							"host": [
+								"{{backend_url}}"
+							],
+							"path": [
+								"entities",
+								"p01"
+							]
+						},
+						"description": "Retrieve single entity dossier by nodeId."
+					},
+					"response": []
+				},
+				{
+					"name": "List Relationships",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{backend_url}}/relationships",
+							"host": [
+								"{{backend_url}}"
+							],
+							"path": [
+								"relationships"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "financial",
+									"disabled": true
+								}
+							]
+						},
+						"description": "List all detected relationships. Filterable by ?type=associate|financial|communication|family."
+					},
+					"response": []
+				},
+				{
+					"name": "Upload Document & Extract (Analyse)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"description": "Upload PDF, DOCX, TXT, or CSV police report/FIR"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{backend_url}}/analyse",
+							"host": [
+								"{{backend_url}}"
+							],
+							"path": [
+								"analyse"
+							]
+						},
+						"description": "Upload a police FIR or document. Runs Tika extraction, NER, detects connections, and saves to database."
+					},
+					"response": []
+				},
+				{
+					"name": "List All Cases",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{backend_url}}/cases",
+							"host": [
+								"{{backend_url}}"
+							],
+							"path": [
+								"cases"
+							]
+						},
+						"description": "Fetch all investigation cases ordered newest first."
+					},
+					"response": []
+				},
+				{
+					"name": "Create New Case",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Operation Coastal Storm\",\n  \"description\": \"Investigation into western coastal narcotics and Hawala syndicates.\",\n  \"investigator\": \"Supt. V. Rathore, IPS\",\n  \"department\": \"CBI Special Crime Unit\",\n  \"risk\": \"high\",\n  \"status\": \"active\"\n}"
+						},
+						"url": {
+							"raw": "{{backend_url}}/cases",
+							"host": [
+								"{{backend_url}}"
+							],
+							"path": [
+								"cases"
+							]
+						},
+						"description": "Create a new investigation case."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Case Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{backend_url}}/cases/stats",
+							"host": [
+								"{{backend_url}}"
+							],
+							"path": [
+								"cases",
+								"stats"
+							]
+						},
+						"description": "Retrieve case count breakdown (total, active, closed, pending)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Python AI NLP Microservice",
+			"item": [
+				{
+					"name": "AI Service Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{ai_url}}/health",
+							"host": [
+								"{{ai_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Verify Python AI NLP microservice status."
+					},
+					"response": []
+				},
+				{
+					"name": "AI Direct Text Analysis",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"Accused Vikram Sethi alias Vicky was intercepted operating vehicle MH-12-AB-4521 in Mumbai. Wiretaps confirmed he transferred ₹45 Lakhs via Hawala to Riya Desai using burner phone +91 9820011234. Both suspects are key operatives of the Coastal Syndicate cartel.\",\n  \"source\": \"wiretap_transcript_04\"\n}"
+						},
+						"url": {
+							"raw": "{{ai_url}}/analyse-text",
+							"host": [
+								"{{ai_url}}"
+							],
+							"path": [
+								"analyse-text"
+							]
+						},
+						"description": "Direct text analysis for suspect co-occurrences, Indian CDR/vehicle regex extraction, risk scoring, and syndicate clustering."
+					},
+					"response": []
+				},
+				{
+					"name": "AI File Upload Analysis",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"description": "PDF, DOCX, TXT or CSV document"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{ai_url}}/analyse-file",
+							"host": [
+								"{{ai_url}}"
+							],
+							"path": [
+								"analyse-file"
+							]
+						},
+						"description": "Direct file parsing using PyPDF, python-docx, and AI entity clustering."
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
