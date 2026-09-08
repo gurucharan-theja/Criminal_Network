@@ -1,12 +1,16 @@
-/**
+﻿/**
  * NetworkGraph — Intelligence Card-Node Network Visualization
  *
  * Implements:
  * 1. Dark intelligence dot-matrix background
  * 2. Card-based nodes with risk border colors, badge icons, risk score, and link counts
- * 3. Orthogonal / elbow step-links with source/target port pins and association labels
- * 4. Controls: Zoom In (+), Zoom Out (-), Fit Screen (Center & Zoom to Fit), Best Screen (Reset zoom & optimal layout)
- * 5. Interactive live Mini-Map in the corner with dynamic viewport indicator
+ * 3. Orthogonal & Smooth Curved links with auto-curving multi-edges
+ * 4. Interactive Edge De-Cluttering:
+ *    - Label pill badges with translucent background
+ *    - Hover/Select spotlight: Selected/hovered node highlights connected edges and dims background edges
+ *    - "Labels" toggle button to instantly hide/show all edge text clutter
+ * 5. Controls: Zoom In (+), Zoom Out (-), Fit Screen, Best Screen, Toggle Edge Labels, Full Tab
+ * 6. Interactive live Mini-Map in the corner with dynamic viewport indicator
  */
 import { useEffect, useRef, useState } from 'react'
 import * as d3 from 'd3'
@@ -17,15 +21,10 @@ import {
   Scan,
   Fullscreen,
   Minimize2,
-  User,
-  Building,
-  MapPin,
-  Car,
-  Phone,
-  CreditCard,
-  Layers
+  Tag,
+  Eye,
+  EyeOff
 } from 'lucide-react'
-
 
 const CARD_W = 160
 const CARD_H = 88
@@ -55,10 +54,8 @@ export default function NetworkGraph({
   onClearSelected = null,
   height = 540,
 }) {
-
   const containerRef = useRef(null)
   const svgRef = useRef(null)
-  const miniSvgRef = useRef(null)
   const zoomBehaviorRef = useRef(null)
   const simRef = useRef(null)
 
@@ -66,8 +63,9 @@ export default function NetworkGraph({
   const [currentTransform, setCurrentTransform] = useState(d3.zoomIdentity)
   const [showMiniMap, setShowMiniMap] = useState(true)
   const [isFullTab, setIsFullTab] = useState(false)
+  const [showEdgeLabels, setShowEdgeLabels] = useState(true)
 
-  // Track responsive size (accounting for full-tab mode)
+  // Track responsive size
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
@@ -85,7 +83,6 @@ export default function NetworkGraph({
     }
   }, [height, isFullTab])
 
-
   // Simulation & D3 Rendering
   useEffect(() => {
     if (!svgRef.current || nodes.length === 0) return
@@ -97,7 +94,6 @@ export default function NetworkGraph({
     // 1. Defs (Glows and dot pattern)
     const defs = svg.append('defs')
 
-    // Dot grid pattern
     const pattern = defs.append('pattern')
       .attr('id', 'dot-grid')
       .attr('width', 24)
@@ -124,8 +120,6 @@ export default function NetworkGraph({
 
     // 2. Root zoomable layer
     const rootG = svg.append('g').attr('class', 'graph-root')
-
-    // Links container and Nodes container
     const linkLayer = rootG.append('g').attr('class', 'links-layer')
     const nodeLayer = rootG.append('g').attr('class', 'nodes-layer')
 
@@ -159,18 +153,27 @@ export default function NetworkGraph({
 
     const nodeById = new Map(simNodes.map(d => [d.id, d]))
 
-    const simLinks = links.map(l => ({
-      ...l,
-      source: nodeById.get(typeof l.source === 'object' ? l.source.id : l.source),
-      target: nodeById.get(typeof l.target === 'object' ? l.target.id : l.target),
-    })).filter(l => l.source && l.target)
+    // Group parallel edges between same pair of nodes to offset curves
+    const edgePairCount = {}
+    const simLinks = links.map(l => {
+      const sid = typeof l.source === 'object' ? l.source.id : l.source
+      const tid = typeof l.target === 'object' ? l.target.id : l.target
+      const pairKey = sid < tid ? `${sid}--${tid}` : `${tid}--${sid}`
+      edgePairCount[pairKey] = (edgePairCount[pairKey] || 0) + 1
+      return {
+        ...l,
+        source: nodeById.get(sid),
+        target: nodeById.get(tid),
+        pairIndex: edgePairCount[pairKey] - 1,
+        pairKey
+      }
+    }).filter(l => l.source && l.target)
 
     // 4. Adaptive Force Simulation to prevent clutter and card overlapping
     const nodeCount = simNodes.length
-    // Automatically scale distance and charge as more nodes are added
-    const linkDistance = nodeCount > 25 ? 240 : (nodeCount > 10 ? 200 : 180)
-    const chargeStrength = nodeCount > 25 ? -1400 : (nodeCount > 10 ? -1100 : -900)
-    const collisionRadius = CARD_W * 0.78 // Guaranteed no cards overlap
+    const linkDistance = nodeCount > 25 ? 260 : (nodeCount > 10 ? 220 : 190)
+    const chargeStrength = nodeCount > 25 ? -1500 : (nodeCount > 10 ? -1200 : -950)
+    const collisionRadius = CARD_W * 0.78
 
     const sim = d3.forceSimulation(simNodes)
       .force('link', d3.forceLink(simLinks).id(d => d.id).distance(linkDistance))
@@ -182,53 +185,104 @@ export default function NetworkGraph({
 
     simRef.current = sim
 
-    // Render step-connector links
+    const RELATION_COLORS = {
+      financial: '#16A34A',      // Crisp Green
+      communication: '#0284C7',  // Clean Blue
+      family: '#7C3AED',         // Purple
+      associate: '#D97706',      // Amber
+      default: '#64748B'
+    }
+
+    // Set of connected node IDs to focusNodeId
+    const connectedToFocus = new Set()
+    if (focusNodeId) {
+      connectedToFocus.add(focusNodeId)
+      simLinks.forEach(l => {
+        if (l.source.id === focusNodeId) connectedToFocus.add(l.target.id)
+        if (l.target.id === focusNodeId) connectedToFocus.add(l.source.id)
+      })
+    }
+
+    // Render step/curved connector links
     const linkItems = linkLayer.selectAll('.graph-link')
       .data(simLinks)
       .enter()
       .append('g')
       .attr('class', 'graph-link')
 
-    const RELATION_COLORS = {
-      financial: '#22c55e',      // Green - money conduit
-      communication: '#38bdf8',  // Cyan - calls/messages
-      family: '#a78bfa',         // Purple - kinship
-      associate: '#f59e0b',      // Amber - co-conspirators
-      default: '#475569'
-    }
-
     const linkPaths = linkItems.append('path')
       .attr('fill', 'none')
       .attr('stroke', d => RELATION_COLORS[d.type] || RELATION_COLORS.default)
-      .attr('stroke-width', d => d.strength === 'strong' ? 2.2 : 1.4)
-      .attr('stroke-opacity', 0.85)
-      .attr('stroke-dasharray', d => d.type === 'communication' ? '5 3' : 'none')
+      .attr('stroke-width', d => {
+        const isFocused = focusNodeId && (d.source.id === focusNodeId || d.target.id === focusNodeId)
+        return isFocused ? 2.5 : 1.4
+      })
+      .attr('stroke-opacity', d => {
+        if (!focusNodeId) return 0.55 // subtle when overview
+        return (d.source.id === focusNodeId || d.target.id === focusNodeId) ? 1.0 : 0.15 // spotlight connected edges
+      })
+      .attr('stroke-dasharray', d => d.type === 'communication' ? '4 3' : 'none')
 
-    // Link pin circles at intersections
-    linkItems.append('circle')
+    // Link pin circles at connections
+    const pinSources = linkItems.append('circle')
       .attr('class', 'pin-source')
-      .attr('r', 3.2)
-      .attr('fill', '#090d16')
+      .attr('r', 2.8)
+      .attr('fill', '#FFFFFF')
       .attr('stroke', d => RELATION_COLORS[d.type] || '#64748b')
-      .attr('stroke-width', 1.5)
+      .attr('stroke-width', 1.4)
+      .attr('opacity', d => {
+        if (!focusNodeId) return 0.7
+        return (d.source.id === focusNodeId || d.target.id === focusNodeId) ? 1.0 : 0.15
+      })
 
-    linkItems.append('circle')
+    const pinTargets = linkItems.append('circle')
       .attr('class', 'pin-target')
-      .attr('r', 3.2)
-      .attr('fill', '#090d16')
+      .attr('r', 2.8)
+      .attr('fill', '#FFFFFF')
       .attr('stroke', d => RELATION_COLORS[d.type] || '#64748b')
-      .attr('stroke-width', 1.5)
+      .attr('stroke-width', 1.4)
+      .attr('opacity', d => {
+        if (!focusNodeId) return 0.7
+        return (d.source.id === focusNodeId || d.target.id === focusNodeId) ? 1.0 : 0.15
+      })
 
-    // Link labels with colored text
-    const linkTexts = linkItems.append('text')
-      .attr('font-size', '8.5px')
+    // Edge Label Pill Badges (hidden if showEdgeLabels is false or if not connected during focus)
+    const labelGroups = linkItems.append('g')
+      .attr('class', 'edge-label-badge')
+      .style('display', showEdgeLabels ? 'block' : 'none')
+      .attr('opacity', d => {
+        if (!focusNodeId) return 0.85
+        return (d.source.id === focusNodeId || d.target.id === focusNodeId) ? 1.0 : 0.1
+      })
+
+    // Pill background rect
+    const labelRects = labelGroups.append('rect')
+      .attr('rx', 4)
+      .attr('ry', 4)
+      .attr('fill', '#FFFFFF')
+      .attr('stroke', d => RELATION_COLORS[d.type] || '#CBD5E1')
+      .attr('stroke-width', 1)
+      .attr('filter', 'drop-shadow(0 1px 2px rgba(0,0,0,0.06))')
+
+    // Pill label text
+    const labelTexts = labelGroups.append('text')
+      .attr('font-size', '8px')
       .attr('font-weight', '700')
-      .attr('font-family', 'monospace')
-      .attr('fill', d => RELATION_COLORS[d.type] || '#94a3b8')
+      .attr('font-family', 'system-ui, -apple-system, sans-serif')
+      .attr('fill', d => RELATION_COLORS[d.type] || '#475569')
       .attr('text-anchor', 'middle')
-      .attr('dy', -4)
-      .text(d => d.label ? d.label.toUpperCase() : (d.type ? d.type.toUpperCase() : 'CONNECTED TO'))
+      .attr('dy', '3px')
+      .text(d => d.label ? d.label.toUpperCase() : (d.type ? d.type.toUpperCase() : 'LINK'))
 
+    // Size pill rect to fit text
+    labelTexts.each(function () {
+      const bbox = this.getBBox()
+      d3.select(this.parentNode).select('rect')
+        .attr('x', bbox.x - 5)
+        .attr('y', bbox.y - 2)
+        .attr('width', bbox.width + 10)
+        .attr('height', bbox.height + 4)
+    })
 
     // 5. Render Node Cards
     const nodeItems = nodeLayer.selectAll('.graph-card')
@@ -237,6 +291,10 @@ export default function NetworkGraph({
       .append('g')
       .attr('class', 'graph-card')
       .style('cursor', 'pointer')
+      .attr('opacity', d => {
+        if (!focusNodeId) return 1.0
+        return connectedToFocus.has(d.id) ? 1.0 : 0.25 // De-clutter unrelated nodes
+      })
       .call(
         d3.drag()
           .on('start', (event, d) => {
@@ -282,10 +340,10 @@ export default function NetworkGraph({
 
     // Port connection pins on card borders
     const pinOffsets = [
-      { cx: 0, cy: -CARD_H / 2 }, // Top
-      { cx: 0, cy: CARD_H / 2 },  // Bottom
-      { cx: -CARD_W / 2, cy: 0 }, // Left
-      { cx: CARD_W / 2, cy: 0 }   // Right
+      { cx: 0, cy: -CARD_H / 2 },
+      { cx: 0, cy: CARD_H / 2 },
+      { cx: -CARD_W / 2, cy: 0 },
+      { cx: CARD_W / 2, cy: 0 }
     ]
     pinOffsets.forEach(pos => {
       nodeItems.append('circle')
@@ -365,33 +423,53 @@ export default function NetworkGraph({
       .attr('text-anchor', 'end')
       .text(d => `${d.linkCount} links`)
 
-    // 6. Tick function for Orthogonal / Step Router
+    // 6. Smooth Organic Curving Tick router (eliminates sharp overlapping 90-deg staircases)
     sim.on('tick', () => {
-      // Draw orthogonal 90-degree lines between nodes
       linkPaths.attr('d', d => {
         const sx = d.source.x
         const sy = d.source.y
         const tx = d.target.x
         const ty = d.target.y
 
-        // Determine midpoint elbow
-        const mx = (sx + tx) / 2
-        return `M ${sx} ${sy} L ${mx} ${sy} L ${mx} ${ty} L ${tx} ${ty}`
+        // Calculate smooth curve offset to prevent parallel overlapping edges
+        const dx = tx - sx
+        const dy = ty - sy
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1
+        const offset = (d.pairIndex || 0) * 22
+
+        // Normal vector for gentle curvature
+        const nx = -dy / dist
+        const ny = dx / dist
+        const cx = (sx + tx) / 2 + nx * offset
+        const cy = (sy + ty) / 2 + ny * offset
+
+        return `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`
       })
 
-      // Update pin positions
-      linkItems.select('.pin-source')
+      pinSources
         .attr('cx', d => d.source.x)
         .attr('cy', d => d.source.y)
 
-      linkItems.select('.pin-target')
+      pinTargets
         .attr('cx', d => d.target.x)
         .attr('cy', d => d.target.y)
 
-      // Position label midway on elbow
-      linkTexts
-        .attr('x', d => (d.source.x + d.target.x) / 2)
-        .attr('y', d => (d.source.y + d.target.y) / 2)
+      // Position label badge at curve peak
+      labelGroups.attr('transform', d => {
+        const sx = d.source.x
+        const sy = d.source.y
+        const tx = d.target.x
+        const ty = d.target.y
+        const dx = tx - sx
+        const dy = ty - sy
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1
+        const offset = (d.pairIndex || 0) * 22
+        const nx = -dy / dist
+        const ny = dx / dist
+        const mx = (sx + tx) / 2 + nx * (offset * 0.5)
+        const my = (sy + ty) / 2 + ny * (offset * 0.5)
+        return `translate(${mx},${my})`
+      })
 
       nodeItems.attr('transform', d => `translate(${d.x},${d.y})`)
     })
@@ -404,7 +482,7 @@ export default function NetworkGraph({
     return () => {
       sim.stop()
     }
-  }, [nodes, links, dims, focusNodeId])
+  }, [nodes, links, dims, focusNodeId, showEdgeLabels])
 
   // --- Zoom & Viewport Handlers ---
   const handleZoomIn = () => {
@@ -448,7 +526,6 @@ export default function NetworkGraph({
   const handleBestScreen = () => {
     if (!svgRef.current || !zoomBehaviorRef.current) return
     const { w, h } = dims
-    // Optimal default view centered on primary suspects
     d3.select(svgRef.current).transition().duration(400).call(
       zoomBehaviorRef.current.transform,
       d3.zoomIdentity.translate(w * 0.05, h * 0.05).scale(0.9)
@@ -479,7 +556,7 @@ export default function NetworkGraph({
       {/* Main D3 Canvas */}
       <svg ref={svgRef} width={dims.w} height={dims.h} style={{ display: 'block', cursor: 'grab' }} />
 
-      {/* Control Action Island: Zoom In, Zoom Out, Fit Screen, Best Screen, Full Tab */}
+      {/* Control Action Island */}
       <div
         style={{
           position: 'absolute',
@@ -513,7 +590,29 @@ export default function NetworkGraph({
           <ZoomOut size={15} />
         </button>
 
-        <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
+        <div style={{ width: 1, height: 16, background: '#E2E8F0', margin: '0 4px' }} />
+
+        {/* Toggle Edge Labels button */}
+        <button
+          onClick={() => setShowEdgeLabels(v => !v)}
+          className="btn btn-ghost"
+          style={{
+            padding: '6px 10px',
+            fontSize: '0.74rem',
+            color: showEdgeLabels ? 'var(--primary)' : 'var(--muted)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            borderRadius: 4,
+            background: showEdgeLabels ? 'rgba(21, 101, 192, 0.08)' : 'transparent'
+          }}
+          title={showEdgeLabels ? "Hide edge connection labels for cleaner view" : "Show edge connection labels"}
+        >
+          {showEdgeLabels ? <Eye size={13} color="var(--primary)" /> : <EyeOff size={13} color="var(--muted)" />}
+          Labels {showEdgeLabels ? 'ON' : 'OFF'}
+        </button>
+
+        <div style={{ width: 1, height: 16, background: '#E2E8F0', margin: '0 4px' }} />
 
         <button
           onClick={handleFitScreen}
@@ -533,7 +632,7 @@ export default function NetworkGraph({
           <Scan size={13} color="var(--primary)" /> Best Screen
         </button>
 
-        <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
+        <div style={{ width: 1, height: 16, background: '#E2E8F0', margin: '0 4px' }} />
 
         <button
           onClick={toggleFullTab}
@@ -554,7 +653,6 @@ export default function NetworkGraph({
         </button>
       </div>
 
-
       {/* Mini-Map Overlay Component */}
       {showMiniMap && (
         <div
@@ -567,22 +665,22 @@ export default function NetworkGraph({
             background: '#FFFFFF',
             border: '1px solid var(--border)',
             borderRadius: 'var(--radius-md)',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
             overflow: 'hidden',
-            zIndex: 50
+            zIndex: 40
           }}
         >
           <div
             style={{
               padding: '4px 8px',
+              fontSize: '0.65rem',
+              fontWeight: 800,
+              letterSpacing: '0.08em',
+              color: 'var(--muted)',
               borderBottom: '1px solid var(--border)',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center',
-              fontSize: '0.65rem',
-              color: 'var(--muted)',
-              fontWeight: 700,
-              letterSpacing: '0.06em'
+              alignItems: 'center'
             }}
           >
             <span>MINI MAP</span>
@@ -590,9 +688,7 @@ export default function NetworkGraph({
           </div>
 
           <svg width={170} height={96} style={{ display: 'block', background: '#F8FAFC' }}>
-            {/* Render mini nodes */}
             {simRef.current?.nodes().map((n, i) => {
-              // Normalize positions to minimap coordinates
               const mx = 85 + (n.x - dims.w / 2) * 0.12
               const my = 48 + (n.y - dims.h / 2) * 0.12
               return (
@@ -610,7 +706,6 @@ export default function NetworkGraph({
               )
             })}
 
-            {/* Viewport Indicator Rectangle */}
             <rect
               x={Math.max(2, 85 - (currentTransform.x * 0.07))}
               y={Math.max(2, 48 - (currentTransform.y * 0.07))}
@@ -624,6 +719,7 @@ export default function NetworkGraph({
           </svg>
         </div>
       )}
+
       {/* Floating Tactical Entity Detail Drawer in Full Tab Mode */}
       {isFullTab && selectedEntity && (
         <div
@@ -741,4 +837,3 @@ export default function NetworkGraph({
     </div>
   )
 }
-
