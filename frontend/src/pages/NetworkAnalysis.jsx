@@ -1,8 +1,8 @@
-import { useState, useMemo, useEffect } from 'react'
+﻿import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Network, Filter, RefreshCw,
-  AlertTriangle, Users, Link2, Sliders, Upload,
+  AlertTriangle, Users, Link2, Sliders, Upload, Target, Eye
 } from 'lucide-react'
 
 import NetworkGraph from '../graph/NetworkGraph'
@@ -20,6 +20,7 @@ export default function NetworkAnalysis() {
   const [selectedNode, setSelectedNode] = useState(null)
   const [hoveredNode, setHoveredNode]   = useState(null)
   const [showFilters, setShowFilters]   = useState(true)
+  const [isolationMode, setIsolationMode] = useState('all') // 'all' | '1-hop' | '2-hop'
 
   // Real graph data from Zustand Store & Backend
   const { nodes: realNodes, links: realLinks, loadGraph, loading } = useGraphStore()
@@ -44,11 +45,46 @@ export default function NetworkAnalysis() {
     })
     if (linkFilter !== 'all') links = links.filter(l => l.type === linkFilter)
 
+    // Isolation mode filtering (1-hop or 2-hop around selectedNode)
+    if (selectedNode && isolationMode !== 'all') {
+      const targetId = selectedNode.id
+      const hop1Nodes = new Set([targetId])
+
+      links.forEach(l => {
+        const s = typeof l.source === 'object' ? l.source.id : l.source
+        const t = typeof l.target === 'object' ? l.target.id : l.target
+        if (s === targetId) hop1Nodes.add(t)
+        if (t === targetId) hop1Nodes.add(s)
+      })
+
+      if (isolationMode === '1-hop') {
+        nodes = nodes.filter(n => hop1Nodes.has(n.id))
+        links = links.filter(l => {
+          const s = typeof l.source === 'object' ? l.source.id : l.source
+          const t = typeof l.target === 'object' ? l.target.id : l.target
+          return hop1Nodes.has(s) && hop1Nodes.has(t)
+        })
+      } else if (isolationMode === '2-hop') {
+        const hop2Nodes = new Set(hop1Nodes)
+        links.forEach(l => {
+          const s = typeof l.source === 'object' ? l.source.id : l.source
+          const t = typeof l.target === 'object' ? l.target.id : l.target
+          if (hop1Nodes.has(s)) hop2Nodes.add(t)
+          if (hop1Nodes.has(t)) hop2Nodes.add(s)
+        })
+        nodes = nodes.filter(n => hop2Nodes.has(n.id))
+        links = links.filter(l => {
+          const s = typeof l.source === 'object' ? l.source.id : l.source
+          const t = typeof l.target === 'object' ? l.target.id : l.target
+          return hop2Nodes.has(s) && hop2Nodes.has(t)
+        })
+      }
+    }
+
     return { nodes, links }
-  }, [realNodes, realLinks, riskFilter, typeFilter, linkFilter])
+  }, [realNodes, realLinks, riskFilter, typeFilter, linkFilter, selectedNode, isolationMode])
 
   const selectedEntity = selectedNode ? realNodes.find(n => n.id === selectedNode.id) : null
-
 
   /* Stats from filtered data */
   const highCount   = filtered.nodes.filter(n => n.risk === 'high').length
@@ -63,7 +99,7 @@ export default function NetworkAnalysis() {
           <span className="page-icon"><Network size={20} /></span>
           Network Analysis
         </h1>
-        <p>Interactive criminal network graph. Click nodes to inspect. Drag to rearrange.</p>
+        <p>Interactive tactical criminal network topology. Click nodes to isolate and inspect relational dossiers.</p>
       </div>
 
       {/* Toolbar */}
@@ -74,11 +110,51 @@ export default function NetworkAnalysis() {
         }}
       >
         {/* Node count badges */}
-        <div style={{ display: 'flex', gap: 8, marginRight: 8 }}>
+        <div style={{ display: 'flex', gap: 8, marginRight: 8, alignItems: 'center' }}>
           <span className="badge badge-muted"><Users size={11} />{filtered.nodes.length} nodes</span>
           <span className="badge badge-muted"><Link2 size={11} />{filtered.links.length} edges</span>
           <span className="badge badge-danger"><AlertTriangle size={11} />{highCount} high-risk</span>
         </div>
+
+        {/* Isolation Mode Quick Toggles when a node is selected */}
+        {selectedNode && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '3px 8px', borderRadius: 8 }}>
+            <Target size={13} color="#1D4ED8" />
+            <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#1E40AF' }}>FOCUS: {selectedNode.name?.slice(0, 14)}</span>
+            <button
+              onClick={() => setIsolationMode('all')}
+              style={{
+                background: isolationMode === 'all' ? '#1D4ED8' : 'transparent',
+                color: isolationMode === 'all' ? '#FFF' : '#1E40AF',
+                border: 'none', borderRadius: 4, padding: '2px 8px', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer'
+              }}
+            >
+              Full
+            </button>
+            <button
+              onClick={() => setIsolationMode('1-hop')}
+              style={{
+                background: isolationMode === '1-hop' ? '#1D4ED8' : 'transparent',
+                color: isolationMode === '1-hop' ? '#FFF' : '#1E40AF',
+                border: 'none', borderRadius: 4, padding: '2px 8px', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer'
+              }}
+              title="Show only immediate direct contacts"
+            >
+              1-Hop
+            </button>
+            <button
+              onClick={() => setIsolationMode('2-hop')}
+              style={{
+                background: isolationMode === '2-hop' ? '#1D4ED8' : 'transparent',
+                color: isolationMode === '2-hop' ? '#FFF' : '#1E40AF',
+                border: 'none', borderRadius: 4, padding: '2px 8px', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer'
+              }}
+              title="Show up to 2 degrees of separation"
+            >
+              2-Hop
+            </button>
+          </div>
+        )}
 
         <div style={{ flex: 1 }} />
 
@@ -91,7 +167,7 @@ export default function NetworkAnalysis() {
         </button>
         <button
           className="btn btn-outline btn-sm"
-          onClick={() => { setRiskFilter('all'); setTypeFilter('all'); setLinkFilter('all') }}
+          onClick={() => { setRiskFilter('all'); setTypeFilter('all'); setLinkFilter('all'); setIsolationMode('all') }}
         >
           <RefreshCw size={14} /> Reset
         </button>
@@ -256,10 +332,10 @@ export default function NetworkAnalysis() {
                   fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary)',
                 }}
               >
-                {selectedEntity.avatar}
+                {selectedEntity.avatar || selectedEntity.name?.slice(0, 2)?.toUpperCase() || 'ID'}
               </div>
               <h3 style={{ marginBottom: 4 }}>{selectedEntity.name}</h3>
-              <p style={{ margin: 0 }}>{selectedEntity.role}</p>
+              <p style={{ margin: 0 }}>{selectedEntity.role || 'Operative'}</p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 10 }}>
                 <span className={`badge ${selectedEntity.risk === 'high' ? 'badge-danger' : selectedEntity.risk === 'medium' ? 'badge-warning' : 'badge-success'}`}>
                   {selectedEntity.risk?.toUpperCase()} RISK

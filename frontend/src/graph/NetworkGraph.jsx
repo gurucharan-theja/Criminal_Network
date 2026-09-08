@@ -165,12 +165,20 @@ export default function NetworkGraph({
       target: nodeById.get(typeof l.target === 'object' ? l.target.id : l.target),
     })).filter(l => l.source && l.target)
 
-    // 4. Force Simulation
+    // 4. Adaptive Force Simulation to prevent clutter and card overlapping
+    const nodeCount = simNodes.length
+    // Automatically scale distance and charge as more nodes are added
+    const linkDistance = nodeCount > 25 ? 240 : (nodeCount > 10 ? 200 : 180)
+    const chargeStrength = nodeCount > 25 ? -1400 : (nodeCount > 10 ? -1100 : -900)
+    const collisionRadius = CARD_W * 0.78 // Guaranteed no cards overlap
+
     const sim = d3.forceSimulation(simNodes)
-      .force('link', d3.forceLink(simLinks).id(d => d.id).distance(180))
-      .force('charge', d3.forceManyBody().strength(-900))
-      .force('center', d3.forceCenter(w / 2, h / 2))
-      .force('collision', d3.forceCollide().radius(CARD_W * 0.75))
+      .force('link', d3.forceLink(simLinks).id(d => d.id).distance(linkDistance))
+      .force('charge', d3.forceManyBody().strength(chargeStrength))
+      .force('center', d3.forceCenter(w / 2, h / 2).strength(0.08))
+      .force('collision', d3.forceCollide().radius(collisionRadius).iterations(2))
+      .force('x', d3.forceX(w / 2).strength(0.04))
+      .force('y', d3.forceY(h / 2).strength(0.04))
 
     simRef.current = sim
 

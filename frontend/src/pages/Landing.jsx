@@ -98,19 +98,7 @@ export default function Landing() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: '1rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.01em' }}>
-                  CNI // CrimeNet Intelligence
-                </span>
-                <span
-                  style={{
-                    fontSize: '0.65rem',
-                    fontWeight: 700,
-                    padding: '2px 6px',
-                    borderRadius: 4,
-                    background: 'rgba(21,101,192,0.08)',
-                    color: '#1565C0',
-                    border: '1px solid rgba(21,101,192,0.2)',
-                  }}
-                >
+                 CrimeNet Intelligence
                 </span>
               </div>
               <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 500 }}>
@@ -294,7 +282,7 @@ export default function Landing() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#166534' }} />
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0F172A', letterSpacing: '0.04em' }}>
-                SYNDICATE NETWORK TOPOLOGY // LIVE INFERENCE
+                SYNDICATE NETWORK TOPOLOGY
               </span>
             </div>
             <span style={{ fontSize: '0.7rem', color: '#64748B', fontFamily: 'monospace' }}>

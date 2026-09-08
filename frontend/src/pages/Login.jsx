@@ -163,7 +163,7 @@ export default function Login() {
 
         {/* Footer Identity */}
         <div style={{ position: 'relative', zIndex: 2, fontSize: '0.72rem', color: '#64748B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>Smart India Hackathon (SIH 2026) &bull; Problem Statement 26189</span>
+
           <span style={{ color: '#38BDF8', fontWeight: 600 }}>Zero-Trust Enforced</span>
         </div>
       </div>
@@ -363,11 +363,9 @@ export default function Login() {
 
           {/* Prototype Footer Marker */}
           <div style={{ marginTop: 26, paddingTop: 18, borderTop: '1px solid #F1F5F9', textAlign: 'center' }}>
-            <div style={{ fontSize: '0.74rem', color: '#64748B', fontWeight: 600 }}>
-              Prototype &bull; SIH 2026
-            </div>
+
             <div style={{ fontSize: '0.68rem', color: '#94A3B8', marginTop: 3 }}>
-              Authorized Law Enforcement Personnel Only
+              Authorized Law Enforcement Persons Only
             </div>
           </div>
         </div>
