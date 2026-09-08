@@ -149,9 +149,9 @@ export default function Landing() {
           {/* Navigation Links & Login */}
           <nav style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
             <a href="#hero" style={{ fontSize: '0.84rem', fontWeight: 600, color: '#0F172A' }}>Overview</a>
-            <a href="#capabilities" style={{ fontSize: '0.84rem', fontWeight: 500, color: '#64748B' }}>Capabilities</a>
-            <a href="#metrics" style={{ fontSize: '0.84rem', fontWeight: 500, color: '#64748B' }}>Metrics</a>
-            
+            <a href="#capabilities" style={{ fontSize: '0.84rem', fontWeight: 500, color: '#0F172A' }}>Capabilities</a>
+            <a href="#metrics" style={{ fontSize: '0.84rem', fontWeight: 500, color: '#0F172A' }}>Metrics</a>
+
             {/* Login Button with 200ms Micro-interaction (Rule 2) */}
             <button
               onClick={() => navigate('/login')}
