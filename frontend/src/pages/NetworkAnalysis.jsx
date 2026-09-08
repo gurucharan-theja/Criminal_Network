@@ -307,16 +307,22 @@ export default function NetworkAnalysis() {
             <div style={{ marginTop: 20 }}>
               <div className="card-title"><Link2 size={13} /> Connected Nodes</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {relations
-                  .filter(r => r.source === selectedEntity.id || r.target === selectedEntity.id)
+                {(realLinks || [])
+                  .filter(r => {
+                    const s = typeof r.source === 'object' ? r.source.id : r.source
+                    const t = typeof r.target === 'object' ? r.target.id : r.target
+                    return s === selectedEntity.id || t === selectedEntity.id
+                  })
                   .slice(0, 5)
                   .map(r => {
-                    const otherId = r.source === selectedEntity.id ? r.target : r.source
-                    const other = entityById[otherId]
+                    const s = typeof r.source === 'object' ? r.source.id : r.source
+                    const t = typeof r.target === 'object' ? r.target.id : r.target
+                    const otherId = s === selectedEntity.id ? t : s
+                    const other = (realNodes || []).find(n => n.id === otherId)
                     if (!other) return null
                     return (
                       <div
-                        key={r.id}
+                        key={r.id || `${s}-${t}`}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 10,
                           padding: '8px 10px',
@@ -326,13 +332,13 @@ export default function NetworkAnalysis() {
                           cursor: 'pointer',
                           fontSize: '0.8rem',
                         }}
-                        onClick={() => setSelectedNode({ id: otherId, ...other })}
+                        onClick={() => setSelectedNode(other)}
                       >
-                        <span className={`risk-dot ${other.risk}`} />
+                        <span className={`risk-dot ${other.risk || 'medium'}`} />
                         <span style={{ color: 'var(--text)', fontWeight: 500, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {other.name}
                         </span>
-                        <span style={{ color: 'var(--muted)', fontSize: '0.72rem', flexShrink: 0 }}>{r.label}</span>
+                        <span style={{ color: 'var(--muted)', fontSize: '0.72rem', flexShrink: 0 }}>{r.label || r.type || 'connected'}</span>
                       </div>
                     )
                   })}
