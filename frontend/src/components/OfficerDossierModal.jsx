@@ -15,7 +15,9 @@ import {
 } from 'lucide-react'
 import useAuthStore from '../store/useAuthStore'
 
-export default function OfficerDossierModal({ onClose }) {
+export default function OfficerDossierModal({ isOpen, onClose }) {
+  if (!isOpen) return null
+
   const [activeTab, setActiveTab] = useState('dossier') // dossier | commendations | operations
   const officer = useAuthStore((s) => s.officer)
 

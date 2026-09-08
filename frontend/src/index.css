@@ -1,4 +1,4 @@
-﻿/* ═══════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
    CRIMINAL NETWORK ANALYSIS — GLOBAL DESIGN SYSTEM
    THEME: GOVERNMENT INTELLIGENCE LIGHT (CALIBRATED MICRO-INTERACTIONS)
    ═══════════════════════════════════════════════════════════════ */
@@ -306,8 +306,14 @@ a:hover { color: #0D47A1; text-decoration: underline; }
 
 /* ── App Shell ──────────────────────────────────────────────── */
 .app-shell { display: flex; flex-direction: column; min-height: 100vh; }
-.app-body  { display: flex; flex: 1; }
-.page-content { flex: 1; min-width: 0; padding: 28px 32px; background: var(--bg); }
+.app-body  { display: flex; flex: 1; position: relative; }
+.page-content {
+  flex: 1;
+  min-width: 0;
+  padding: 28px 32px 60px;
+  background: var(--bg);
+  box-sizing: border-box;
+}
 
 /* ── Grid utilities ─────────────────────────────────────────── */
 .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
