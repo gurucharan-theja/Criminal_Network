@@ -1,4 +1,4 @@
-﻿package com.sih.criminalnetwork.config;
+package com.sih.criminalnetwork.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
