@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NetworkGraph — Intelligence Card-Node Network Visualization
  *
  * Implements:
@@ -176,6 +176,9 @@ export default function NetworkGraph({
     const collisionRadius = CARD_W * 0.78
 
     const sim = d3.forceSimulation(simNodes)
+      .velocityDecay(0.45) // High damping so nodes quickly stop floating
+      .alphaDecay(0.04)   // Cools down in ~1.5 seconds into a permanent static state
+      .alphaMin(0.001)
       .force('link', d3.forceLink(simLinks).id(d => d.id).distance(linkDistance))
       .force('charge', d3.forceManyBody().strength(chargeStrength))
       .force('center', d3.forceCenter(w / 2, h / 2).strength(0.08))
@@ -298,7 +301,7 @@ export default function NetworkGraph({
       .call(
         d3.drag()
           .on('start', (event, d) => {
-            if (!event.active) sim.alphaTarget(0.3).restart()
+            if (!event.active) sim.alphaTarget(0.15).restart()
             d.fx = d.x
             d.fy = d.y
           })
@@ -308,8 +311,9 @@ export default function NetworkGraph({
           })
           .on('end', (event, d) => {
             if (!event.active) sim.alphaTarget(0)
-            d.fx = null
-            d.fy = null
+            // Pin the node permanently right where the officer placed it
+            d.fx = event.x
+            d.fy = event.y
           })
       )
       .on('click', (event, d) => {
