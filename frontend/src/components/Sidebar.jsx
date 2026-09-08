@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom'
+﻿import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   Upload,
@@ -92,6 +92,7 @@ function NavItem({ path, label, icon: Icon }) {
 export default function Sidebar() {
   return (
     <aside
+      className="custom-sidebar-scroll"
       style={{
         position: 'fixed',
         top: 'var(--nav-h)',
@@ -102,10 +103,13 @@ export default function Sidebar() {
         borderRight: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',
-        padding: '16px 12px',
+        padding: '16px 12px 24px',
         zIndex: 900,
         overflowY: 'auto',
+        overflowX: 'hidden',
         boxShadow: '1px 0 3px 0 rgba(0, 0, 0, 0.02)',
+        scrollbarWidth: 'thin',
+        scrollbarColor: '#CBD5E1 transparent',
       }}
     >
       {/* Clean Tactical Header Banner inside Sidebar */}
@@ -148,8 +152,8 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      {/* Spacer + footer */}
-      <div style={{ marginTop: 'auto', paddingTop: 14 }}>
+      {/* Spacer + footer status card */}
+      <div style={{ marginTop: 24, paddingTop: 14 }}>
         <div
           style={{
             background: 'var(--panel-light)',
