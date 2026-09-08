@@ -111,7 +111,6 @@ export default function Landing() {
                     border: '1px solid rgba(21,101,192,0.2)',
                   }}
                 >
-                  SIH 2026 PROTOTYPE
                 </span>
               </div>
               <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 500 }}>
@@ -123,9 +122,9 @@ export default function Landing() {
           {/* Navigation Links */}
           <nav style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
             <a href="#hero" style={{ textDecoration: 'none', color: '#0F172A', fontSize: '0.85rem', fontWeight: 600 }}>Home</a>
-            <a href="#capabilities" style={{ textDecoration: 'none', color: '#64748B', fontSize: '0.85rem', fontWeight: 500 }}>Capabilities</a>
-            <a href="#workflow" style={{ textDecoration: 'none', color: '#64748B', fontSize: '0.85rem', fontWeight: 500 }}>How It Works</a>
-            <a href="#compliance" style={{ textDecoration: 'none', color: '#64748B', fontSize: '0.85rem', fontWeight: 500 }}>Evidentiary Standard</a>
+            <a href="#capabilities" style={{ textDecoration: 'none', color: '#0F172A', fontSize: '0.85rem', fontWeight: 500 }}>Capabilities</a>
+            <a href="#workflow" style={{ textDecoration: 'none', color: '#0F172A', fontSize: '0.85rem', fontWeight: 500 }}>How It Works</a>
+        
 
             {/* Officer Login Button */}
             <button
