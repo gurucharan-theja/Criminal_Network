@@ -470,13 +470,13 @@ export default function Insights() {
           <div className="table-wrap">
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
               <thead>
-                <tr style={{ background: 'rgba(11, 17, 32, 0.6)', borderBottom: '1px solid var(--border)' }}>
-                  <th style={{ padding: '12px 16px', color: 'var(--muted)', fontSize: '0.72rem' }}>INFLUENCE RANK</th>
-                  <th style={{ padding: '12px 16px', color: 'var(--muted)', fontSize: '0.72rem' }}>SUSPECT ENTITY</th>
-                  <th style={{ padding: '12px 16px', color: 'var(--muted)', fontSize: '0.72rem' }}>CENTRALITY ROLE</th>
-                  <th style={{ padding: '12px 16px', color: 'var(--muted)', fontSize: '0.72rem' }}>THREAT LEVEL</th>
-                  <th style={{ padding: '12px 16px', color: 'var(--muted)', fontSize: '0.72rem' }}>DEGREE CENTRALITY</th>
-                  <th style={{ padding: '12px 16px', color: 'var(--muted)', fontSize: '0.72rem' }}>BETWEENNESS SCORE</th>
+                <tr style={{ background: 'rgba(194, 211, 198, 0.6)', borderBottom: '1px solid var(--border)' }}>
+                  <th style={{ padding: '12px 16px', color: 'blue', fontSize: '0.72rem' }}>INFLUENCE RANK</th>
+                  <th style={{ padding: '12px 16px', color: 'blue', fontSize: '0.72rem' }}>SUSPECT ENTITY</th>
+                  <th style={{ padding: '12px 16px', color: 'blue', fontSize: '0.72rem' }}>CENTRALITY ROLE</th>
+                  <th style={{ padding: '12px 16px', color: 'blue', fontSize: '0.72rem' }}>THREAT LEVEL</th>
+                  <th style={{ padding: '12px 16px', color: 'blue', fontSize: '0.72rem' }}>DEGREE CENTRALITY</th>
+                  <th style={{ padding: '12px 16px', color: 'blue', fontSize: '0.72rem' }}>BETWEENNESS SCORE</th>
                 </tr>
               </thead>
               <tbody>

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   PhoneCall,
   Radio,
@@ -16,10 +16,14 @@ import {
   Flame,
   CheckCircle2,
   Upload,
-  Plus
+  Plus,
+  Trash2,
+  Database
 } from 'lucide-react'
 import useToast from '../hooks/useToast'
 import useGraphStore from '../store/useGraphStore'
+
+const STORAGE_KEY = 'crime_net_cdr_records'
 
 export default function CDRAnalytics() {
   const toast = useToast()
@@ -30,6 +34,164 @@ export default function CDRAnalytics() {
   const [activeTab, setActiveTab] = useState('call_logs') // call_logs | tower_dump | night_calls
   const [searchQuery, setSearchQuery] = useState('')
   const [carrierFilter, setCarrierFilter] = useState('all')
+
+  // Load persisted CDR records on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setRecords(parsed)
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load persisted CDR records', e)
+    }
+  }, [])
+
+  // Helper to update records state & localStorage
+  const updateRecords = (newRecords) => {
+    setRecords(newRecords)
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newRecords))
+    } catch (e) {
+      console.error('Failed to save CDR records to localStorage', e)
+    }
+  }
+
+  // Load sample demonstration CDR dataset
+  const loadSampleCDRData = () => {
+    const sampleRecords = [
+      {
+        id: 'CDR-DEMO-01',
+        callerNumber: '+91 98765 43210',
+        callerName: 'Target A (Vikram Singh)',
+        receiverNumber: '+91 91234 56789',
+        receiverName: 'Contact B (Rajesh Kumar)',
+        timestamp: '2026-09-07 02:15:30',
+        duration: 480,
+        callType: 'VOICE_CALL',
+        callDirection: 'OUTGOING',
+        towerId: 'TOWER-MUM-4001',
+        towerLocation: 'Dadar TT Circle, Mumbai',
+        serviceProvider: 'Airtel',
+        imei: '864201041920101',
+        flags: ['NIGHT_CALL', 'LONG_DURATION'],
+      },
+      {
+        id: 'CDR-DEMO-02',
+        callerNumber: '+91 91234 56789',
+        callerName: 'Contact B (Rajesh Kumar)',
+        receiverNumber: '+91 98223 34455',
+        receiverName: 'Associate C (Suresh Patil)',
+        timestamp: '2026-09-07 03:45:12',
+        duration: 620,
+        callType: 'VOICE_INTERCEPT',
+        callDirection: 'INCOMING',
+        towerId: 'TOWER-MUM-4002',
+        towerLocation: 'Bandra Kurla Complex (BKC)',
+        serviceProvider: 'Jio',
+        imei: '864201041920102',
+        flags: ['NIGHT_CALL', 'LONG_DURATION'],
+      },
+      {
+        id: 'CDR-DEMO-03',
+        callerNumber: '+91 98765 43210',
+        callerName: 'Target A (Vikram Singh)',
+        receiverNumber: '+91 97654 32109',
+        receiverName: 'Courier Contact D',
+        timestamp: '2026-09-07 11:20:05',
+        duration: 45,
+        callType: 'VOICE_CALL',
+        callDirection: 'OUTGOING',
+        towerId: 'TOWER-MUM-4001',
+        towerLocation: 'Dadar TT Circle, Mumbai',
+        serviceProvider: 'Airtel',
+        imei: '864201041920101',
+        flags: [],
+      },
+      {
+        id: 'CDR-DEMO-04',
+        callerNumber: '+91 99887 76655',
+        callerName: 'Unidentified Operative X',
+        receiverNumber: '+91 98765 43210',
+        receiverName: 'Target A (Vikram Singh)',
+        timestamp: '2026-09-07 01:05:44',
+        duration: 310,
+        callType: 'VOICE_CALL',
+        callDirection: 'INCOMING',
+        towerId: 'TOWER-DEL-1008',
+        towerLocation: 'Connaught Place Sector 3, Delhi',
+        serviceProvider: 'Vi',
+        imei: '864201041920104',
+        flags: ['NIGHT_CALL'],
+      },
+      {
+        id: 'CDR-DEMO-05',
+        callerNumber: '+91 98223 34455',
+        callerName: 'Associate C (Suresh Patil)',
+        receiverNumber: '+91 94111 22334',
+        receiverName: 'Logistics Facilitator E',
+        timestamp: '2026-09-07 14:10:00',
+        duration: 180,
+        callType: 'VOICE_CALL',
+        callDirection: 'OUTGOING',
+        towerId: 'TOWER-PUN-2015',
+        towerLocation: 'Shivajinagar Hub, Pune',
+        serviceProvider: 'BSNL',
+        imei: '864201041920105',
+        flags: [],
+      },
+    ]
+
+    updateRecords(sampleRecords)
+
+    // Integrate into graph store
+    const extractedNodes = []
+    const extractedLinks = []
+    sampleRecords.forEach((r, idx) => {
+      const callerId = `ph-${r.callerNumber.replace(/\D/g, '')}`
+      const receiverId = `ph-${r.receiverNumber.replace(/\D/g, '')}`
+
+      extractedNodes.push({
+        id: callerId,
+        name: `${r.callerName} (${r.callerNumber})`,
+        type: 'Phone',
+        role: 'Monitored Telecom Handset',
+        risk: r.flags.includes('NIGHT_CALL') ? 'high' : 'medium',
+        location: r.towerLocation,
+        sourceFile: 'Sample_Demo_CDR.csv',
+        connections: 1,
+      })
+
+      extractedNodes.push({
+        id: receiverId,
+        name: `${r.receiverName} (${r.receiverNumber})`,
+        type: 'Phone',
+        role: 'Contact Telecom Handset',
+        risk: 'medium',
+        location: r.towerLocation,
+        sourceFile: 'Sample_Demo_CDR.csv',
+        connections: 1,
+      })
+
+      extractedLinks.push({
+        id: `sample-link-${idx}`,
+        source: callerId,
+        target: receiverId,
+        type: 'communication',
+        sourceFile: 'Sample_Demo_CDR.csv',
+      })
+    })
+
+    mergeExtractionResult({
+      entities: extractedNodes,
+      relations: extractedLinks,
+    })
+
+    toast.success(`Loaded ${sampleRecords.length} sample forensic CDR records & updated network graph!`)
+  }
 
   // Parse real uploaded CDR CSV / text file
   const handleFileUpload = (e) => {
@@ -42,11 +204,13 @@ export default function CDRAnalytics() {
       parseCDRText(text, file.name)
     }
     reader.readAsText(file)
+    // Reset file input value so same file can be uploaded again if needed
+    e.target.value = ''
   }
 
   const parseCDRText = (text, fileName) => {
     try {
-      const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0)
+      const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0)
       if (lines.length === 0) {
         toast.warning('Uploaded file is empty.')
         return
@@ -54,7 +218,12 @@ export default function CDRAnalytics() {
 
       // Check if line 0 is a header
       const firstLine = lines[0].toLowerCase()
-      const hasHeader = firstLine.includes('caller') || firstLine.includes('msisdn') || firstLine.includes('number') || firstLine.includes('phone')
+      const hasHeader =
+        firstLine.includes('caller') ||
+        firstLine.includes('msisdn') ||
+        firstLine.includes('number') ||
+        firstLine.includes('phone') ||
+        firstLine.includes('timestamp')
       const dataLines = hasHeader ? lines.slice(1) : lines
 
       const parsed = []
@@ -63,19 +232,19 @@ export default function CDRAnalytics() {
 
       dataLines.forEach((line, idx) => {
         // Split by comma, tab, or semicolon
-        const cols = line.split(/[,;\t]/).map(c => c.replace(/^["']|["']$/g, '').trim())
+        const cols = line.split(/[,;\t]/).map((c) => c.replace(/^["']|["']$/g, '').trim())
         if (cols.length >= 2) {
-          const callerNum = cols[0] || cols[1] || `+91 ${Math.floor(7000000000 + Math.random() * 2999999999)}`
-          const receiverNum = cols[2] || cols[3] || cols[1] || `+91 ${Math.floor(7000000000 + Math.random() * 2999999999)}`
-          const callerName = cols[2] && isNaN(cols[2].replace(/\D/g, '')) ? cols[2] : `Target Handset ${idx + 1}`
-          const receiverName = cols[4] && isNaN(cols[4].replace(/\D/g, '')) ? cols[4] : `Contact Handset ${idx + 1}`
-          const timestamp = cols[5] || cols[3] || new Date(Date.now() - idx * 3600000).toISOString().replace('T', ' ').slice(0, 19)
-          const duration = parseInt(cols[6] || cols[4] || '120', 10) || 120
-          const callType = cols[7] || (duration > 300 ? 'VOICE_CALL' : duration < 15 ? 'SHORT_PING' : 'VOICE_INTERCEPT')
-          const towerId = cols[8] || `CELL-TOWER-0${(idx % 6) + 1}`
-          const towerLocation = cols[9] || (idx % 2 === 0 ? 'City Center Hub' : 'Industrial Area Sector 4')
-          const carrier = cols[10] || (idx % 3 === 0 ? 'Airtel' : idx % 3 === 1 ? 'Jio' : 'Vi')
-          const imei = cols[11] || `86420104192${100 + idx}`
+          const callerNum = cols[0] || `+91 ${Math.floor(7000000000 + Math.random() * 2999999999)}`
+          const receiverNum = cols[1] || cols[2] || `+91 ${Math.floor(7000000000 + Math.random() * 2999999999)}`
+          const callerName = cols[2] && isNaN(cols[2].replace(/\D/g, '')) ? cols[2] : `Subscriber ${callerNum}`
+          const receiverName = cols[3] && isNaN(cols[3].replace(/\D/g, '')) ? cols[3] : `Contact ${receiverNum}`
+          const timestamp = cols[4] || cols[5] || new Date(Date.now() - idx * 3600000).toISOString().replace('T', ' ').slice(0, 19)
+          const duration = parseInt(cols[5] || cols[6] || '120', 10) || 120
+          const callType = cols[6] || cols[7] || (duration > 300 ? 'VOICE_CALL' : duration < 15 ? 'SHORT_PING' : 'VOICE_INTERCEPT')
+          const towerId = cols[7] || cols[8] || `CELL-TOWER-0${(idx % 6) + 1}`
+          const towerLocation = cols[8] || cols[9] || (idx % 2 === 0 ? 'City Center Hub' : 'Industrial Area Sector 4')
+          const carrier = cols[9] || cols[10] || (idx % 3 === 0 ? 'Airtel' : idx % 3 === 1 ? 'Jio' : 'Vi')
+          const imei = cols[10] || cols[11] || `86420104192${100 + idx}`
 
           // Detect night calls (00:00 to 05:00)
           const flags = []
@@ -142,13 +311,16 @@ export default function CDRAnalytics() {
       })
 
       if (parsed.length > 0) {
-        setRecords(parsed)
+        // Merge with existing records or replace
+        const combined = [...records, ...parsed]
+        updateRecords(combined)
+
         // Integrate into global graph store
         mergeExtractionResult({
           entities: extractedNodes,
           relations: extractedLinks,
         })
-        toast.success(`Parsed and imported ${parsed.length} authentic CDR records from ${fileName}!`)
+        toast.success(`Ingested and saved ${parsed.length} authentic CDR records from ${fileName}! Total saved: ${combined.length}`)
       } else {
         toast.warning('No valid CDR rows could be recognized in the file.')
       }
@@ -157,22 +329,52 @@ export default function CDRAnalytics() {
     }
   }
 
-  // Filter calls
-  const filteredCalls = records.filter((record) => {
-    const q = searchQuery.toLowerCase()
-    const matchesQuery =
-      record.callerNumber.toLowerCase().includes(q) ||
-      record.receiverNumber.toLowerCase().includes(q) ||
-      record.callerName.toLowerCase().includes(q) ||
-      record.receiverName.toLowerCase().includes(q) ||
-      record.towerLocation.toLowerCase().includes(q) ||
-      record.imei.includes(q)
+  const handleClearRecords = () => {
+    updateRecords([])
+    toast.info('Cleared all saved CDR records from local storage.')
+  }
 
-    const matchesCarrier =
-      carrierFilter === 'all' || record.serviceProvider.toLowerCase().includes(carrierFilter.toLowerCase())
+  // Safe filter logic with null/undefined guards
+  const filteredCalls = records.filter((record) => {
+    const q = searchQuery.toLowerCase().trim()
+    const callerNum = String(record.callerNumber || '').toLowerCase()
+    const receiverNum = String(record.receiverNumber || '').toLowerCase()
+    const callerName = String(record.callerName || '').toLowerCase()
+    const receiverName = String(record.receiverName || '').toLowerCase()
+    const towerLoc = String(record.towerLocation || '').toLowerCase()
+    const towerId = String(record.towerId || '').toLowerCase()
+    const imei = String(record.imei || '').toLowerCase()
+    const carrier = String(record.serviceProvider || '').toLowerCase()
+
+    const matchesQuery =
+      !q ||
+      callerNum.includes(q) ||
+      receiverNum.includes(q) ||
+      callerName.includes(q) ||
+      receiverName.includes(q) ||
+      towerLoc.includes(q) ||
+      towerId.includes(q) ||
+      imei.includes(q) ||
+      carrier.includes(q)
+
+    let matchesCarrier = true
+    if (carrierFilter !== 'all') {
+      const filterLower = carrierFilter.toLowerCase()
+      if (filterLower === 'jio') {
+        matchesCarrier = carrier.includes('jio')
+      } else if (filterLower === 'vi') {
+        matchesCarrier = carrier.includes('vi') || carrier.includes('vodafone') || carrier.includes('idea')
+      } else if (filterLower === 'airtel') {
+        matchesCarrier = carrier.includes('airtel')
+      } else if (filterLower === 'bsnl') {
+        matchesCarrier = carrier.includes('bsnl')
+      } else {
+        matchesCarrier = carrier.includes(filterLower)
+      }
+    }
 
     if (activeTab === 'night_calls') {
-      return matchesQuery && matchesCarrier && record.flags.includes('NIGHT_CALL')
+      return matchesQuery && matchesCarrier && Array.isArray(record.flags) && record.flags.includes('NIGHT_CALL')
     }
 
     return matchesQuery && matchesCarrier
@@ -326,6 +528,14 @@ export default function CDRAnalytics() {
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button
+            onClick={loadSampleCDRData}
+            className="btn btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem', background: 'var(--primary-dim)', color: 'var(--primary-light)', border: '1px solid var(--border-glow)' }}
+            title="Load sample CDR dataset to evaluate features immediately"
+          >
+            <Database size={14} /> Load Sample CDR Data
+          </button>
+          <button
             onClick={downloadSampleTemplate}
             className="btn btn-secondary"
             style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem' }}
@@ -425,8 +635,15 @@ export default function CDRAnalytics() {
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={loadSampleCDRData}
               className="btn btn-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+            >
+              <Database size={15} /> Load Sample CDR Data
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="btn btn-secondary"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
             >
               <Upload size={15} /> Ingest Carrier CDR (.CSV)
@@ -501,7 +718,7 @@ export default function CDRAnalytics() {
               </select>
 
               <button
-                onClick={() => setRecords([])}
+                onClick={handleClearRecords}
                 className="btn btn-ghost btn-sm"
                 style={{ color: 'var(--danger)', fontSize: '0.75rem' }}
               >
