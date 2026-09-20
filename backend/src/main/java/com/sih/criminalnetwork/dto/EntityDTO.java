@@ -23,7 +23,8 @@ public class EntityDTO {
     public String  sourceFile;
     public String  firstSeen;
     public String  lastSeen;
-
+public String createdAt;
+public String updatedAt;
     /** Convert JPA Entity → EntityDTO */
     public static EntityDTO from(Entity e) {
         EntityDTO dto = new EntityDTO();
@@ -41,7 +42,16 @@ public class EntityDTO {
         dto.confidence    = e.getConfidence();
         dto.sourceFile    = e.getSourceFile();
         dto.firstSeen     = e.getFirstSeen() != null ? e.getFirstSeen().toString() : null;
-        dto.lastSeen      = e.getLastSeen()  != null ? e.getLastSeen().toString()  : null;
+        dto.lastSeen = e.getLastSeen() != null
+        ? e.getLastSeen().toString()
+        : null;
+        dto.createdAt = e.getCreatedAt() != null
+        ? e.getCreatedAt().toString()
+        : null;
+
+dto.updatedAt = e.getUpdatedAt() != null
+        ? e.getUpdatedAt().toString()
+        : null;
         return dto;
     }
 }

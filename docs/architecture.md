@@ -38,3 +38,51 @@ graph TD
 | **AI NLP Service** | Python 3.14, FastAPI, Uvicorn, PyPDF, python-docx, Regex | Indian phone formats, vehicle registration NER, syndicate clustering |
 | **Persistence** | H2 in-memory (dev) / MySQL compatible (prod) | Entity, relationship, and case storage |
 | **Containerization** | Docker, Docker Compose, Nginx Alpine | One-click production deployment across servers |
+## Service Architecture
+
+The Criminal Network Intelligence Platform consists of four
+primary layers:
+
+1. React Frontend
+2. Spring Boot Backend
+3. Python AI Service
+4. Data Layer
+
+### Frontend
+
+The React application provides the investigator interface
+for cases, evidence, graph analysis, CDR, blockchain,
+insights and reports.
+
+### Backend
+
+Spring Boot acts as the central application API and
+coordinates authentication, case management, evidence,
+graph operations, AI processing and reporting.
+
+### AI Service
+
+FastAPI provides document processing, NLP entity extraction,
+relationship extraction, graph analytics, risk analysis and
+explainable AI.
+
+### Data Layer
+
+PostgreSQL stores application and investigation records.
+
+Neo4j stores entities and relationships required for
+network analysis.
+
+## Evidence Intelligence Pipeline
+
+Evidence
+→ Parsing
+→ Entity Extraction
+→ Relationship Extraction
+→ Confidence Scoring
+→ Data Persistence
+→ Graph Construction
+→ Network Analysis
+→ Risk Analysis
+→ Explainable Insights
+→ Investigation Report

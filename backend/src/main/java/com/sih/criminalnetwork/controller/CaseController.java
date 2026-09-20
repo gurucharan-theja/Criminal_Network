@@ -51,7 +51,7 @@ public class CaseController {
 
     // ── GET /api/v1/cases/stats ──────────────────────────────────
     @GetMapping("/stats")
-    @Operation(summary = "Get case count stats (total, active, closed, pending)")
+    @Operation(summary = "Get case count stats (total, open, active, on-hold, closed)")
     public ResponseEntity<Map<String, Long>> getStats() {
         return ResponseEntity.ok(caseService.getStats());
     }
@@ -94,4 +94,5 @@ public class CaseController {
         caseService.deleteAllCases();
         return ResponseEntity.ok(Map.of("message", "All cases purged successfully"));
     }
+    
 }

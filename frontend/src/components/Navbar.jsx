@@ -56,33 +56,7 @@ export default function Navbar() {
         />
 
         {/* 3-Line Menu / Hamburger Button */}
-        <button
-          onClick={toggleSidebar}
-          style={{
-            background: 'none',
-            border: '1px solid var(--border)',
-            borderRadius: 8,
-            padding: '7px 9px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--text)',
-            transition: 'all 180ms ease',
-          }}
-          title="Toggle Navigation Menu"
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'var(--primary)'
-            e.currentTarget.style.background = 'var(--panel-light)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'var(--border)'
-            e.currentTarget.style.background = 'none'
-          }}
-        >
-          <Menu size={18} color="var(--primary)" />
-        </button>
-
+        
         {/* Clean CrimeNet Branding */}
         <div
           onClick={() => navigate('/dashboard')}

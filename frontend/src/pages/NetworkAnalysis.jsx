@@ -1,496 +1,612 @@
-﻿import { useState, useMemo, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect, useState, useMemo } from 'react'
 import {
-  Network, Filter, RefreshCw,
-  AlertTriangle, Users, Link2, Sliders, Upload, Target,
-  PhoneCall, HeartHandshake, Users2, DollarSign, Layers
+  Network, Search, Filter, RefreshCw, ShieldAlert,
+  Users, ArrowUpRight, Info, HelpCircle, Layers, CheckCircle2,
+  GitBranch, Target, Zap, ChevronRight
 } from 'lucide-react'
-
 import NetworkGraph from '../graph/NetworkGraph'
-import useGraphStore from '../store/useGraphStore'
+import useNetworkStore from '../store/useNetworkStore'
 
-const RISK_FILTERS = ['all', 'high', 'medium', 'low']
-const TYPE_FILTERS = ['all', 'Person', 'Organization', 'Location', 'Vehicle', 'Phone']
+// Demo network dataset if database backend is clean
+const DEMO_ENTITIES = [
+  { id: '1', name: 'Vikram "Kala" Sharma', type: 'SUSPECT', riskScore: 92, alias: 'Shadow Boss', phone: '+91 98765 43210' },
+  { id: '2', name: 'Rajesh Malhotra', type: 'PERSON', riskScore: 78, alias: 'Financier', phone: '+91 98123 45678' },
+  { id: '3', name: 'Apex Logistics Corp', type: 'ORGANIZATION', riskScore: 65, alias: 'Front Company', location: 'Mumbai Port' },
+  { id: '4', name: 'Ananya Roy', type: 'PERSON', riskScore: 45, alias: 'Operative', phone: '+91 97111 22233' },
+  { id: '5', name: '+91 99999 88888', type: 'PHONE', riskScore: 85, alias: 'Burner Line 01' },
+  { id: '6', name: 'ACC-8849-XXXX', type: 'ACCOUNT', riskScore: 88, alias: 'Offshore Vault' },
+  { id: '7', name: 'MH-02-CX-4491', type: 'VEHICLE', riskScore: 50, alias: 'Armored SUV' },
+  { id: '8', name: 'Safehouse Alpha', type: 'LOCATION', riskScore: 70, location: 'Goa Coast' },
+  { id: '9', name: 'Sanjay Dutt (Alias)', type: 'SUSPECT', riskScore: 82, alias: 'Courier' },
+]
 
-// Distinct Tactical Channels
-const CHANNELS = [
-  { id: 'all',           label: 'All Overviews',       icon: Layers,          desc: 'Global syndicate master overview', color: 'var(--primary)' },
-  { id: 'communication', label: 'Communication Web',   icon: PhoneCall,       desc: 'Call records, burner SIMs & messages', color: '#0284C7' },
-  { id: 'associate',     label: 'Associative Network', icon: Users2,          desc: 'Co-conspirators, syndicates & handlers', color: '#D97706' },
-  { id: 'family',        label: 'Family & Kinship',    icon: HeartHandshake,  desc: 'Blood relations & familial conduits', color: '#7C3AED' },
-  { id: 'financial',     label: 'Financial Hawala',    icon: DollarSign,      desc: 'Money trails, shell firms & accounts', color: '#16A34A' },
+const DEMO_RELATIONSHIPS = [
+  { id: 'r1', source: '1', target: '2', type: 'FINANCIAL_TX', weight: 4 },
+  { id: 'r2', source: '1', target: '3', type: 'BENEFICIAL_OWNER', weight: 3 },
+  { id: 'r3', source: '2', target: '6', type: 'ACCOUNT_HOLDER', weight: 5 },
+  { id: 'r4', source: '3', target: '7', type: 'REGISTERED_TO', weight: 2 },
+  { id: 'r5', source: '1', target: '5', type: 'FREQUENT_CALL', weight: 3 },
+  { id: 'r6', source: '4', target: '1', type: 'ASSOCIATE', weight: 2 },
+  { id: 'r7', source: '4', target: '8', type: 'VISITED', weight: 1 },
+  { id: 'r8', source: '9', target: '1', type: 'RECRUIT', weight: 3 },
+  { id: 'r9', source: '9', target: '6', type: 'WIRE_TRANSFER', weight: 4 },
 ]
 
 export default function NetworkAnalysis() {
-  const navigate = useNavigate()
-  const [activeChannel, setActiveChannel] = useState('all') // 'communication' | 'associate' | 'family' | 'financial' | 'all'
-  const [riskFilter, setRiskFilter]       = useState('all')
-  const [typeFilter, setTypeFilter]       = useState('all')
-  const [selectedNode, setSelectedNode]   = useState(null)
-  const [hoveredNode, setHoveredNode]     = useState(null)
-  const [showFilters, setShowFilters]     = useState(false)
-  const [isolationMode, setIsolationMode] = useState('all') // 'all' | '1-hop' | '2-hop'
+  const {
+    entities: storeEntities,
+    relationships: storeRelationships,
+    loading,
+    fetchNetwork,
+    selectedNodeId,
+    selectNode,
+  } = useNetworkStore()
 
-  // Real graph data from Zustand Store & Backend
-  const { nodes: realNodes, links: realLinks, loadGraph, loading } = useGraphStore()
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedType, setSelectedType] = useState('ALL')
+  const [degreeMode, setDegreeMode] = useState('all') // 'all', '1-hop', '2-hop'
+  const [showGuide, setShowGuide] = useState(false)
 
+  // Fetch from store on load
   useEffect(() => {
-    loadGraph()
-  }, [])
+    fetchNetwork()
+  }, [fetchNetwork])
 
-  /* Filtered graph data by selected channel, risk, type, and isolation */
-  const filtered = useMemo(() => {
-    let allNodes = realNodes || []
-    let allLinks = realLinks || []
+  // Determine base dataset (Store or Demo fallback)
+  const baseEntities = storeEntities.length > 0 ? storeEntities : DEMO_ENTITIES
+  const baseRelationships = storeRelationships.length > 0 ? storeRelationships : DEMO_RELATIONSHIPS
 
-    // 1. Channel Filter: strictly filter edges by requested relational channel
-    let targetLinks = allLinks
-    if (activeChannel !== 'all') {
-      targetLinks = allLinks.filter(l => l.type === activeChannel)
+  // Active selected entity object
+  const activeSelectedNode = useMemo(() => {
+    if (!selectedNodeId) return null
+    return baseEntities.find(e => String(e.id || e.nodeId) === String(selectedNodeId)) || null
+  }, [selectedNodeId, baseEntities])
+
+  // Compute 1st and 2nd Degree Hop node IDs when a node is selected and degree filter is active
+  const degreeFilteredNodeIds = useMemo(() => {
+    if (degreeMode === 'all' || !selectedNodeId) {
+      return null // No degree hop restriction
     }
 
-    // 2. Identify nodes participating in this channel
-    const activeNodeIds = new Set()
-    targetLinks.forEach(l => {
-      const s = typeof l.source === 'object' ? l.source.id : l.source
-      const t = typeof l.target === 'object' ? l.target.id : l.target
-      activeNodeIds.add(s)
-      activeNodeIds.add(t)
+    const sId = String(selectedNodeId)
+    const set1Hop = new Set()
+
+    // 1-Hop Neighbors
+    baseRelationships.forEach(r => {
+      const src = String(typeof r.source === 'object' ? r.source.id : r.source)
+      const tgt = String(typeof r.target === 'object' ? r.target.id : r.target)
+      if (src === sId) set1Hop.add(tgt)
+      if (tgt === sId) set1Hop.add(src)
     })
 
-    // If channel is specific, only show entities that actually belong to that channel mapping
-    let nodes = activeChannel === 'all'
-      ? allNodes
-      : allNodes.filter(n => activeNodeIds.has(n.id))
-
-    // 3. Risk & Type secondary filters
-    if (riskFilter !== 'all') nodes = nodes.filter(n => n.risk === riskFilter)
-    if (typeFilter !== 'all') nodes = nodes.filter(n => n.type === typeFilter)
-
-    const finalNodeIds = new Set(nodes.map(n => n.id))
-    let links = targetLinks.filter(l => {
-      const s = typeof l.source === 'object' ? l.source.id : l.source
-      const t = typeof l.target === 'object' ? l.target.id : l.target
-      return finalNodeIds.has(s) && finalNodeIds.has(t)
-    })
-
-    // 4. Isolation mode filtering (1-hop or 2-hop around selectedNode)
-    if (selectedNode && isolationMode !== 'all') {
-      const targetId = selectedNode.id
-      const hop1Nodes = new Set([targetId])
-
-      links.forEach(l => {
-        const s = typeof l.source === 'object' ? l.source.id : l.source
-        const t = typeof l.target === 'object' ? l.target.id : l.target
-        if (s === targetId) hop1Nodes.add(t)
-        if (t === targetId) hop1Nodes.add(s)
-      })
-
-      if (isolationMode === '1-hop') {
-        nodes = nodes.filter(n => hop1Nodes.has(n.id))
-        links = links.filter(l => {
-          const s = typeof l.source === 'object' ? l.source.id : l.source
-          const t = typeof l.target === 'object' ? l.target.id : l.target
-          return hop1Nodes.has(s) && hop1Nodes.has(t)
-        })
-      } else if (isolationMode === '2-hop') {
-        const hop2Nodes = new Set(hop1Nodes)
-        links.forEach(l => {
-          const s = typeof l.source === 'object' ? l.source.id : l.source
-          const t = typeof l.target === 'object' ? l.target.id : l.target
-          if (hop1Nodes.has(s)) hop2Nodes.add(t)
-          if (hop1Nodes.has(t)) hop2Nodes.add(s)
-        })
-        nodes = nodes.filter(n => hop2Nodes.has(n.id))
-        links = links.filter(l => {
-          const s = typeof l.source === 'object' ? l.source.id : l.source
-          const t = typeof l.target === 'object' ? l.target.id : l.target
-          return hop2Nodes.has(s) && hop2Nodes.has(t)
-        })
-      }
+    if (degreeMode === '1-hop') {
+      return new Set([sId, ...set1Hop])
     }
 
-    return { nodes, links }
-  }, [realNodes, realLinks, activeChannel, riskFilter, typeFilter, selectedNode, isolationMode])
+    // 2-Hop Neighbors
+    const set2Hop = new Set([...set1Hop])
+    baseRelationships.forEach(r => {
+      const src = String(typeof r.source === 'object' ? r.source.id : r.source)
+      const tgt = String(typeof r.target === 'object' ? r.target.id : r.target)
 
-  const selectedEntity = selectedNode ? realNodes.find(n => n.id === selectedNode.id) : null
+      if (set1Hop.has(src)) set2Hop.add(tgt)
+      if (set1Hop.has(tgt)) set2Hop.add(src)
+    })
 
-  /* Stats from filtered channel data */
-  const highCount = filtered.nodes.filter(n => n.risk === 'high').length
+    return new Set([sId, ...set2Hop])
+  }, [degreeMode, selectedNodeId, baseRelationships])
 
-  const currentChannelMeta = CHANNELS.find(c => c.id === activeChannel) || CHANNELS[0]
+  // Filter entities based on degree hops, search term, and entity type filter
+  const finalFilteredEntities = useMemo(() => {
+    let result = baseEntities
+
+    // 1. Degree filter restriction
+    if (degreeFilteredNodeIds) {
+      result = result.filter(e => degreeFilteredNodeIds.has(String(e.id || e.nodeId)))
+    }
+
+    // 2. Type filter
+    if (selectedType !== 'ALL') {
+      result = result.filter(e => (e.type || 'PERSON').toUpperCase() === selectedType)
+    }
+
+    // 3. Search term filter
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase()
+      result = result.filter(e =>
+        (e.name || e.label || '').toLowerCase().includes(term) ||
+        (e.alias || '').toLowerCase().includes(term) ||
+        (e.type || '').toLowerCase().includes(term)
+      )
+    }
+
+    return result
+  }, [baseEntities, degreeFilteredNodeIds, selectedType, searchTerm])
+
+  const finalFilteredNodeIds = useMemo(() => new Set(finalFilteredEntities.map(e => String(e.id || e.nodeId))), [finalFilteredEntities])
+
+  // Filter relationships connecting only visible entities
+  const finalFilteredRelationships = useMemo(() => {
+    return baseRelationships.filter(r => {
+      const sId = String(typeof r.source === 'object' ? r.source.id : r.source)
+      const tId = String(typeof r.target === 'object' ? r.target.id : r.target)
+      return finalFilteredNodeIds.has(sId) && finalFilteredNodeIds.has(tId)
+    })
+  }, [baseRelationships, finalFilteredNodeIds])
+
+  // Direct connected nodes for selected entity
+  const connectedNodes = useMemo(() => {
+    if (!selectedNodeId) return []
+    const connectedIds = new Set()
+    baseRelationships.forEach(r => {
+      const sId = String(typeof r.source === 'object' ? r.source.id : r.source)
+      const tId = String(typeof r.target === 'object' ? r.target.id : r.target)
+      if (sId === String(selectedNodeId)) connectedIds.add(tId)
+      if (tId === String(selectedNodeId)) connectedIds.add(sId)
+    })
+    return baseEntities.filter(e => connectedIds.has(String(e.id || e.nodeId)))
+  }, [selectedNodeId, baseRelationships, baseEntities])
+
+  // Stats calculation
+  const highRiskCount = useMemo(() => baseEntities.filter(e => (e.riskScore ?? 50) >= 75).length, [baseEntities])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - var(--nav-h) - 56px)' }}>
-      {/* Page header */}
-      <div className="page-header" style={{ marginBottom: 12 }}>
-        <h1>
-          <span className="page-icon"><Network size={20} /></span>
-          Tactical Relational Mappings
-        </h1>
-        <p>Isolate and analyze independent operational channels: Communication, Associative Syndicate, Family/Kinship, or Financial.</p>
-      </div>
-
-      {/* TACTICAL CHANNEL SELECTOR BAR (Primary Navigation) */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: 10,
-          marginBottom: 14
-        }}
-      >
-        {CHANNELS.map(ch => {
-          const Icon = ch.icon
-          const isActive = activeChannel === ch.id
-          return (
-            <div
-              key={ch.id}
-              onClick={() => {
-                setActiveChannel(ch.id)
-                setSelectedNode(null)
-                setIsolationMode('all')
-              }}
-              style={{
-                padding: '10px 14px',
-                borderRadius: 10,
-                border: `1.5px solid ${isActive ? ch.color : 'var(--border)'}`,
-                background: isActive ? '#FFFFFF' : 'var(--panel)',
-                boxShadow: isActive ? `0 4px 14px ${ch.color}25` : 'none',
-                cursor: 'pointer',
-                transition: 'all 180ms ease',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 4
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: '0.84rem',
-                  fontWeight: 700,
-                  color: isActive ? ch.color : 'var(--text)'
-                }}>
-                  <Icon size={15} color={isActive ? ch.color : 'var(--muted)'} />
-                  {ch.label}
-                </span>
-                {isActive && (
-                  <span style={{
-                    width: 7, height: 7, borderRadius: '50%',
-                    background: ch.color,
-                    boxShadow: `0 0 6px ${ch.color}`
-                  }} />
-                )}
-              </div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--muted)', lineHeight: 1.3 }}>
-                {ch.desc}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Toolbar: Stats & Secondary Filter Controls */}
-      <div
-        style={{
-          display: 'flex', alignItems: 'center', gap: 12,
-          marginBottom: 12, flexWrap: 'wrap',
-        }}
-      >
-        {/* Active Channel telemetry badges */}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span className="badge badge-primary" style={{ background: `${currentChannelMeta.color}15`, color: currentChannelMeta.color, border: `1px solid ${currentChannelMeta.color}40` }}>
-            {currentChannelMeta.label.toUpperCase()}
-          </span>
-          <span className="badge badge-muted"><Users size={11} />{filtered.nodes.length} entities</span>
-          <span className="badge badge-muted"><Link2 size={11} />{filtered.links.length} conduits</span>
-          <span className="badge badge-danger"><AlertTriangle size={11} />{highCount} high-threat</span>
+    <div style={{ padding: '24px', maxWidth: '1650px', margin: '0 auto', fontFamily: "'Inter', sans-serif" }}>
+      {/* Top Header Bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 42,
+            height: 42,
+            borderRadius: 10,
+            background: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
+            color: '#3B82F6',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)'
+          }}>
+            <Network size={22} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>
+              Criminal Network Topology & Link Analysis
+            </h1>
+            <p style={{ fontSize: '0.85rem', color: '#64748B', margin: 0 }}>
+              Multi-hop syndicate path discovery, degree analysis & intelligence mapping
+            </p>
+          </div>
         </div>
 
-        {/* Isolation Mode Quick Toggles when a node is selected */}
-        {selectedNode && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '3px 8px', borderRadius: 8 }}>
-            <Target size={13} color="#1D4ED8" />
-            <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#1E40AF' }}>FOCUS: {selectedNode.name?.slice(0, 14)}</span>
-            <button
-              onClick={() => setIsolationMode('all')}
-              style={{
-                background: isolationMode === 'all' ? '#1D4ED8' : 'transparent',
-                color: isolationMode === 'all' ? '#FFF' : '#1E40AF',
-                border: 'none', borderRadius: 4, padding: '2px 8px', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer'
-              }}
-            >
-              Full
-            </button>
-            <button
-              onClick={() => setIsolationMode('1-hop')}
-              style={{
-                background: isolationMode === '1-hop' ? '#1D4ED8' : 'transparent',
-                color: isolationMode === '1-hop' ? '#FFF' : '#1E40AF',
-                border: 'none', borderRadius: 4, padding: '2px 8px', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer'
-              }}
-              title="Show only immediate direct contacts"
-            >
-              1-Hop
-            </button>
-            <button
-              onClick={() => setIsolationMode('2-hop')}
-              style={{
-                background: isolationMode === '2-hop' ? '#1D4ED8' : 'transparent',
-                color: isolationMode === '2-hop' ? '#FFF' : '#1E40AF',
-                border: 'none', borderRadius: 4, padding: '2px 8px', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer'
-              }}
-              title="Show up to 2 degrees of separation"
-            >
-              2-Hop
-            </button>
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button
+            onClick={() => setShowGuide(!showGuide)}
+            style={{
+              ...actionBtnStyle,
+              background: showGuide ? '#EFF6FF' : '#FFFFFF',
+              borderColor: showGuide ? '#BFDBFE' : '#CBD5E1',
+              color: showGuide ? '#1D4ED8' : '#334155'
+            }}
+          >
+            <HelpCircle size={15} />
+            <span>Degree Hops Guide</span>
+          </button>
 
-        <div style={{ flex: 1 }} />
-
-        {/* Filter toggles */}
-        <button
-          className={`btn btn-sm ${showFilters ? 'btn-primary' : 'btn-outline'}`}
-          onClick={() => setShowFilters(v => !v)}
-        >
-          <Sliders size={14} /> Refine Filters
-        </button>
-        <button
-          className="btn btn-outline btn-sm"
-          onClick={() => { setRiskFilter('all'); setTypeFilter('all'); setIsolationMode('all'); setActiveChannel('all') }}
-        >
-          <RefreshCw size={14} /> Reset
-        </button>
+          <button
+            onClick={() => fetchNetwork()}
+            disabled={loading}
+            style={actionBtnStyle}
+          >
+            <RefreshCw size={14} className={loading ? 'spin' : ''} />
+            <span>Sync Network Data</span>
+          </button>
+        </div>
       </div>
 
-      {/* Expandable Secondary Filter bar */}
-      {showFilters && (
-        <div
-          className="card anim-fade-up"
-          style={{ padding: '12px 16px', marginBottom: 14, display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}
-        >
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <Filter size={13} color="var(--muted)" />
-            <span style={{ fontSize: '0.76rem', color: 'var(--muted)', fontWeight: 600, marginRight: 4 }}>RISK</span>
-            {RISK_FILTERS.map(f => (
-              <button
-                key={f}
-                onClick={() => setRiskFilter(f)}
-                style={{
-                  padding: '3px 10px', borderRadius: 99, fontSize: '0.74rem',
-                  fontWeight: 600, border: '1px solid',
-                  cursor: 'pointer',
-                  background: riskFilter === f
-                    ? (f === 'high' ? 'var(--danger)' : f === 'medium' ? 'var(--warning)' : f === 'low' ? 'var(--success)' : 'var(--primary)')
-                    : 'transparent',
-                  borderColor: riskFilter === f ? 'transparent' : 'var(--border)',
-                  color: riskFilter === f ? '#0B1120' : 'var(--muted)',
-                  textTransform: 'capitalize',
-                }}
-              >
-                {f}
-              </button>
-            ))}
+      {/* Top Quick Stats Ribbon */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: 12,
+        marginBottom: 16
+      }}>
+        <div style={statCardStyle}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Total Network Nodes</div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0F172A', marginTop: 2 }}>{baseEntities.length} Entities</div>
+        </div>
+
+        <div style={statCardStyle}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Active Relationships</div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#2563EB', marginTop: 2 }}>{baseRelationships.length} Links</div>
+        </div>
+
+        <div style={statCardStyle}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>High Risk Suspects</div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#DC2626', marginTop: 2 }}>{highRiskCount} Threat Targets</div>
+        </div>
+
+        <div style={statCardStyle}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Active Hop Filter</div>
+          <div style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{
+              padding: '3px 8px',
+              borderRadius: 4,
+              fontSize: '0.75rem',
+              fontWeight: 800,
+              background: degreeMode === 'all' ? '#F1F5F9' : degreeMode === '1-hop' ? '#DBEAFE' : '#FCE7F3',
+              color: degreeMode === 'all' ? '#475569' : degreeMode === '1-hop' ? '#1D4ED8' : '#9D174D'
+            }}>
+              {degreeMode === 'all' ? 'FULL NETWORK' : degreeMode === '1-hop' ? '1st DEGREE (1-HOP)' : '2nd DEGREE (2-HOP)'}
+            </span>
           </div>
+        </div>
+      </div>
 
-          <div style={{ width: 1, height: 20, background: 'var(--border)' }} />
+      {/* Explanatory Banner for 1st & 2nd Degree Hops */}
+      {showGuide && (
+        <div style={{
+          background: 'linear-gradient(135deg, #EFF6FF 0%, #F8FAFC 100%)',
+          border: '1px solid #BFDBFE',
+          borderRadius: 12,
+          padding: 16,
+          marginBottom: 16,
+          position: 'relative'
+        }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#1E40AF', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Info size={16} /> What are 1st Degree and 2nd Degree Network Hop Options?
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, fontSize: '0.83rem', color: '#334155' }}>
+            <div style={{ background: '#FFFFFF', padding: 10, borderRadius: 8, border: '1px solid #E2E8F0' }}>
+              <div style={{ fontWeight: 700, color: '#0F172A', marginBottom: 4 }}>🌐 Full Network Mode</div>
+              Shows the global network of all suspects, companies, phone numbers, and accounts across all cases simultaneously.
+            </div>
 
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ fontSize: '0.76rem', color: 'var(--muted)', fontWeight: 600, marginRight: 4 }}>ENTITY TYPE</span>
-            {TYPE_FILTERS.map(f => (
-              <button
-                key={f}
-                onClick={() => setTypeFilter(f)}
-                style={{
-                  padding: '3px 10px', borderRadius: 99, fontSize: '0.74rem',
-                  fontWeight: 600, border: '1px solid',
-                  cursor: 'pointer',
-                  background: typeFilter === f ? 'var(--primary-dim)' : 'transparent',
-                  borderColor: typeFilter === f ? 'var(--border-glow)' : 'var(--border)',
-                  color: typeFilter === f ? 'var(--primary)' : 'var(--muted)',
-                  textTransform: 'capitalize',
-                }}
-              >
-                {f}
-              </button>
-            ))}
+            <div style={{ background: '#FFFFFF', padding: 10, borderRadius: 8, border: '1px solid #E2E8F0' }}>
+              <div style={{ fontWeight: 700, color: '#1D4ED8', marginBottom: 4 }}>🎯 1st Degree Hop (Direct)</div>
+              Focuses strictly on the **selected entity** and its **direct connections** (1-hop neighbors like immediate associates or burner phones).
+            </div>
+
+            <div style={{ background: '#FFFFFF', padding: 10, borderRadius: 8, border: '1px solid #E2E8F0' }}>
+              <div style={{ fontWeight: 700, color: '#9D174D', marginBottom: 4 }}>🌿 2nd Degree Hop (Extended)</div>
+              Expands the view to include **2nd-tier contacts** (contacts of contacts) to uncover indirect conduits, offshore laundering vaults, and hidden syndicate rings.
+            </div>
           </div>
         </div>
       )}
 
-      {/* Main content */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: selectedNode ? '1fr 310px' : '1fr', gap: 20, minHeight: 0 }}>
-        {/* Graph */}
-        <div
-          className="card"
-          style={{ padding: 0, overflow: 'hidden', position: 'relative' }}
-        >
-          {filtered.nodes.length === 0 && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 0, left: 0, right: 0, bottom: 0,
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center',
-                zIndex: 10,
-                background: 'rgba(255, 255, 255, 0.92)',
-                backdropFilter: 'blur(3px)',
-                padding: 24,
-                textAlign: 'center'
-              }}
-            >
-              <div style={{ fontSize: '2.4rem', marginBottom: 10 }}>📡</div>
-              <h3 style={{ margin: '0 0 8px', color: 'var(--text)', fontSize: '1.15rem' }}>
-                No {currentChannelMeta.label} Conduits Detected
-              </h3>
-              <p style={{ margin: '0 0 16px', color: 'var(--muted)', fontSize: '0.84rem', maxWidth: 440, lineHeight: 1.5 }}>
-                {activeChannel !== 'all'
-                  ? `No entities in current database have registered ${activeChannel} edges. Switch channels or upload evidence files containing ${activeChannel} data.`
-                  : 'No criminal entities or relational edges registered. Ingest FIRs, CDR files, or case reports to generate tactical mappings.'}
-              </p>
-              <div style={{ display: 'flex', gap: 10 }}>
-                {activeChannel !== 'all' && (
-                  <button
-                    className="btn btn-outline"
-                    onClick={() => setActiveChannel('all')}
-                  >
-                    View All Overviews
-                  </button>
-                )}
-                <button
-                  className="btn btn-primary"
-                  onClick={() => navigate('/upload')}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
-                >
-                  <Upload size={14} /> Ingest Evidence Data
-                </button>
-              </div>
-            </div>
-          )}
+      {/* Active Filter Notification Bar if Hop Filter is active */}
+      {degreeMode !== 'all' && activeSelectedNode && (
+        <div style={{
+          background: '#FEF3C7',
+          border: '1px solid #FCD34D',
+          borderRadius: 8,
+          padding: '10px 14px',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: '0.85rem',
+          color: '#92400E'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
+            <Target size={16} />
+            <span>
+              Filtering {degreeMode === '1-hop' ? '1st Degree (Direct Connections)' : '2nd Degree (Extended Ring)'} centered on target: <strong>{activeSelectedNode.name || activeSelectedNode.label}</strong> ({finalFilteredEntities.length} nodes visible)
+            </span>
+          </div>
 
-          <NetworkGraph
-            nodes={filtered.nodes}
-            links={filtered.links}
-            onNodeClick={(node) => setSelectedNode(selectedNode?.id === node.id ? null : node)}
-            onNodeHover={setHoveredNode}
-            focusNodeId={selectedNode?.id}
-            selectedEntity={selectedEntity}
-            onClearSelected={() => setSelectedNode(null)}
-            height={520}
-          />
-        </div>
-
-        {/* Node detail panel */}
-        {selectedNode && selectedEntity && (
-          <div
-            className="card anim-fade-up"
-            style={{ overflow: 'auto', position: 'relative' }}
+          <button
+            onClick={() => setDegreeMode('all')}
+            style={{
+              background: '#FFFFFF',
+              border: '1px solid #F59E0B',
+              borderRadius: 6,
+              padding: '4px 10px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              color: '#B45309',
+              cursor: 'pointer'
+            }}
           >
-            <button
-              onClick={() => setSelectedNode(null)}
-              style={{
-                position: 'absolute', top: 14, right: 14,
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--muted)', padding: 4,
-              }}
-            >✕</button>
+            Show Full Network
+          </button>
+        </div>
+      )}
 
-            <div className="card-title"><Users size={13} /> Entity Detail</div>
-
-            {/* Avatar + name */}
-            <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <div
+      {/* Main Graph Grid Layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: activeSelectedNode ? '1fr 340px' : '1fr', gap: 16 }}>
+        {/* Left Section: Controls & D3 Viewport */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Controls Bar */}
+          <div style={{
+            background: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            borderRadius: 12,
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12
+          }}>
+            {/* Search Box */}
+            <div style={{ position: 'relative', width: 260 }}>
+              <Search size={16} style={{ position: 'absolute', left: 12, top: 10, color: '#94A3B8' }} />
+              <input
+                type="text"
+                placeholder="Search entities, aliases..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
                 style={{
-                  width: 64, height: 64, borderRadius: '50%',
-                  background: 'linear-gradient(135deg, var(--primary-dim), var(--secondary-dim))',
-                  border: `2px solid var(--border-glow)`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  margin: '0 auto 12px',
-                  fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary)',
+                  width: '100%',
+                  padding: '8px 12px 8px 36px',
+                  borderRadius: 8,
+                  border: '1px solid #CBD5E1',
+                  fontSize: '0.88rem',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            {/* Type Filter */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Filter size={14} style={{ color: '#64748B' }} />
+              <select
+                value={selectedType}
+                onChange={e => setSelectedType(e.target.value)}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  border: '1px solid #CBD5E1',
+                  fontSize: '0.88rem',
+                  background: '#FFFFFF',
+                  color: '#0F172A',
+                  cursor: 'pointer'
                 }}
               >
-                {selectedEntity.avatar || selectedEntity.name?.slice(0, 2)?.toUpperCase() || 'ID'}
-              </div>
-              <h3 style={{ marginBottom: 4 }}>{selectedEntity.name}</h3>
-              <p style={{ margin: 0 }}>{selectedEntity.role || 'Operative'}</p>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 10 }}>
-                <span className={`badge ${selectedEntity.risk === 'high' ? 'badge-danger' : selectedEntity.risk === 'medium' ? 'badge-warning' : 'badge-success'}`}>
-                  {selectedEntity.risk?.toUpperCase()} RISK
+                <option value="ALL">All Entity Types</option>
+                <option value="SUSPECT">Suspects</option>
+                <option value="PERSON">Persons</option>
+                <option value="ORGANIZATION">Organizations</option>
+                <option value="PHONE">Phones</option>
+                <option value="ACCOUNT">Accounts</option>
+                <option value="LOCATION">Locations</option>
+                <option value="VEHICLE">Vehicles</option>
+              </select>
+            </div>
+
+            {/* Degree Analysis Selector Buttons */}
+            <div style={{ display: 'flex', background: '#F1F5F9', padding: 3, borderRadius: 8, border: '1px solid #CBD5E1' }}>
+              <button
+                onClick={() => setDegreeMode('all')}
+                style={{
+                  ...degreeBtnStyle,
+                  background: degreeMode === 'all' ? '#FFFFFF' : 'transparent',
+                  color: degreeMode === 'all' ? '#2563EB' : '#64748B',
+                  fontWeight: degreeMode === 'all' ? 700 : 500,
+                  boxShadow: degreeMode === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                }}
+              >
+                Full Network
+              </button>
+
+              <button
+                onClick={() => {
+                  if (selectedNodeId) {
+                    setDegreeMode('1-hop')
+                  } else {
+                    alert('Please click on a node in the graph first to analyze its 1st Degree connections.')
+                  }
+                }}
+                style={{
+                  ...degreeBtnStyle,
+                  background: degreeMode === '1-hop' ? '#FFFFFF' : 'transparent',
+                  color: degreeMode === '1-hop' ? '#1D4ED8' : '#64748B',
+                  fontWeight: degreeMode === '1-hop' ? 700 : 500,
+                  boxShadow: degreeMode === '1-hop' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                }}
+              >
+                1st Degree
+              </button>
+
+              <button
+                onClick={() => {
+                  if (selectedNodeId) {
+                    setDegreeMode('2-hop')
+                  } else {
+                    alert('Please click on a node in the graph first to analyze its 2nd Degree connections.')
+                  }
+                }}
+                style={{
+                  ...degreeBtnStyle,
+                  background: degreeMode === '2-hop' ? '#FFFFFF' : 'transparent',
+                  color: degreeMode === '2-hop' ? '#9D174D' : '#64748B',
+                  fontWeight: degreeMode === '2-hop' ? 700 : 500,
+                  boxShadow: degreeMode === '2-hop' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                }}
+              >
+                2nd Degree
+              </button>
+            </div>
+          </div>
+
+          {/* D3 Graph Viewport */}
+          <div style={{ height: 680, position: 'relative' }}>
+            <NetworkGraph
+              nodes={finalFilteredEntities}
+              links={finalFilteredRelationships}
+              selectedNodeId={selectedNodeId}
+              onNodeSelect={id => selectNode(id)}
+            />
+          </div>
+        </div>
+
+        {/* Right Section: Selected Entity Inspector */}
+        {activeSelectedNode && (
+          <div style={{
+            background: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            borderRadius: 12,
+            padding: 20,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.04)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <span style={{
+                  display: 'inline-block',
+                  fontSize: '0.7rem',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  background: '#F1F5F9',
+                  color: '#475569',
+                  marginBottom: 6
+                }}>
+                  {activeSelectedNode.type || 'ENTITY'}
                 </span>
-                <span className="badge badge-primary">{selectedEntity.type}</span>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                  {activeSelectedNode.name || activeSelectedNode.label}
+                </h3>
+                {activeSelectedNode.alias && (
+                  <div style={{ fontSize: '0.82rem', color: '#64748B' }}>
+                    Alias: {activeSelectedNode.alias}
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => selectNode(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#94A3B8',
+                  cursor: 'pointer',
+                  fontSize: '1.2rem',
+                  padding: 4
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Quick Degree Hop Filter Action Buttons for target */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <button
+                onClick={() => setDegreeMode('1-hop')}
+                style={{
+                  padding: '8px 10px',
+                  borderRadius: 6,
+                  border: degreeMode === '1-hop' ? '2px solid #2563EB' : '1px solid #CBD5E1',
+                  background: degreeMode === '1-hop' ? '#EFF6FF' : '#F8FAFC',
+                  color: degreeMode === '1-hop' ? '#1D4ED8' : '#334155',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4
+                }}
+              >
+                <Target size={14} /> 1st Degree Hop
+              </button>
+
+              <button
+                onClick={() => setDegreeMode('2-hop')}
+                style={{
+                  padding: '8px 10px',
+                  borderRadius: 6,
+                  border: degreeMode === '2-hop' ? '2px solid #DB2777' : '1px solid #CBD5E1',
+                  background: degreeMode === '2-hop' ? '#FDF2F8' : '#F8FAFC',
+                  color: degreeMode === '2-hop' ? '#9D174D' : '#334155',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4
+                }}
+              >
+                <GitBranch size={14} /> 2nd Degree Hop
+              </button>
+            </div>
+
+            {/* Risk Score */}
+            <div style={{
+              background: '#F8FAFC',
+              border: '1px solid #E2E8F0',
+              borderRadius: 8,
+              padding: 12
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: 6 }}>
+                <span>Risk Assessment Score</span>
+                <span style={{
+                  color: (activeSelectedNode.riskScore || 50) >= 75 ? '#DC2626' : (activeSelectedNode.riskScore || 50) >= 50 ? '#D97706' : '#059669',
+                  fontWeight: 800
+                }}>
+                  {activeSelectedNode.riskScore || 50} / 100
+                </span>
+              </div>
+              <div style={{ height: 6, background: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${activeSelectedNode.riskScore || 50}%`,
+                    background: (activeSelectedNode.riskScore || 50) >= 75 ? '#EF4444' : (activeSelectedNode.riskScore || 50) >= 50 ? '#F59E0B' : '#10B981',
+                    borderRadius: 3
+                  }}
+                />
               </div>
             </div>
 
-            <div className="divider" />
-
-            {/* Fields */}
-            {[
-              { label: 'Status',      val: selectedEntity.status },
-              { label: 'Location',    val: selectedEntity.location },
-              { label: 'Connections', val: selectedEntity.connections },
-              { label: 'First Seen',  val: selectedEntity.firstSeen },
-              { label: 'Last Seen',   val: selectedEntity.lastSeen },
-              { label: 'Case IDs',    val: selectedEntity.caseIds?.join(', ') },
-            ].map(f => f.val != null && (
-              <div
-                key={f.label}
-                style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '7px 0', borderBottom: '1px solid var(--border)' }}
-              >
-                <span style={{ fontSize: '0.78rem', color: 'var(--muted)', fontWeight: 500 }}>{f.label}</span>
-                <span style={{ fontSize: '0.82rem', color: 'var(--text)', fontWeight: 500, textAlign: 'right' }}>{String(f.val)}</span>
+            {/* Direct Connections List */}
+            <div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0F172A', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>Connected Entities</span>
+                <span style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>
+                  ({connectedNodes.length})
+                </span>
               </div>
-            ))}
 
-            {/* Bio */}
-            {selectedEntity.bio && (
-              <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: '0.72rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Intelligence Note</div>
-                <p style={{ fontSize: '0.82rem', lineHeight: 1.6, color: 'var(--muted)' }}>{selectedEntity.bio}</p>
-              </div>
-            )}
-
-            {/* Connected entities */}
-            <div style={{ marginTop: 20 }}>
-              <div className="card-title"><Link2 size={13} /> Connected Channels</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {(realLinks || [])
-                  .filter(r => {
-                    const s = typeof r.source === 'object' ? r.source.id : r.source
-                    const t = typeof r.target === 'object' ? r.target.id : r.target
-                    return s === selectedEntity.id || t === selectedEntity.id
-                  })
-                  .slice(0, 6)
-                  .map(r => {
-                    const s = typeof r.source === 'object' ? r.source.id : r.source
-                    const t = typeof r.target === 'object' ? r.target.id : r.target
-                    const otherId = s === selectedEntity.id ? t : s
-                    const other = (realNodes || []).find(n => n.id === otherId)
-                    if (!other) return null
-                    return (
-                      <div
-                        key={r.id || `${s}-${t}`}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '8px 10px',
-                          background: 'var(--panel-light)',
-                          borderRadius: 'var(--radius-md)',
-                          border: '1px solid var(--border)',
-                          cursor: 'pointer',
-                          fontSize: '0.8rem',
-                        }}
-                        onClick={() => setSelectedNode(other)}
-                      >
-                        <span className={`risk-dot ${other.risk || 'medium'}`} />
-                        <span style={{ color: 'var(--text)', fontWeight: 500, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {other.name}
-                        </span>
-                        <span style={{ color: 'var(--muted)', fontSize: '0.72rem', flexShrink: 0 }}>{r.label || r.type || 'connected'}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
+                {connectedNodes.length === 0 ? (
+                  <div style={{ fontSize: '0.82rem', color: '#94A3B8', textAlign: 'center', padding: 12 }}>
+                    No immediate connections found
+                  </div>
+                ) : (
+                  connectedNodes.map(conn => (
+                    <div
+                      key={conn.id || conn.nodeId}
+                      onClick={() => selectNode(conn.id || conn.nodeId)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        background: '#F8FAFC',
+                        border: '1px solid #E2E8F0',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s ease'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1E293B' }}>
+                          {conn.name || conn.label}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748B' }}>
+                          {conn.type}
+                        </div>
                       </div>
-                    )
-                  })}
+                      <ArrowUpRight size={14} style={{ color: '#94A3B8' }} />
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -498,4 +614,35 @@ export default function NetworkAnalysis() {
       </div>
     </div>
   )
+}
+
+const statCardStyle = {
+  background: '#FFFFFF',
+  border: '1px solid #E2E8F0',
+  borderRadius: 10,
+  padding: '12px 16px',
+  boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+}
+
+const actionBtnStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '8px 14px',
+  borderRadius: 8,
+  border: '1px solid #CBD5E1',
+  background: '#FFFFFF',
+  color: '#0F172A',
+  fontSize: '0.85rem',
+  fontWeight: 600,
+  cursor: 'pointer'
+}
+
+const degreeBtnStyle = {
+  padding: '6px 12px',
+  border: 'none',
+  borderRadius: 6,
+  fontSize: '0.8rem',
+  cursor: 'pointer',
+  transition: 'all 0.15s ease'
 }

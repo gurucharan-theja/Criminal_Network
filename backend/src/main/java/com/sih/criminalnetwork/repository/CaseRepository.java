@@ -1,8 +1,9 @@
 package com.sih.criminalnetwork.repository;
 
 import com.sih.criminalnetwork.model.Case;
+import com.sih.criminalnetwork.model.Case.CasePriority;
 import com.sih.criminalnetwork.model.Case.CaseStatus;
-import com.sih.criminalnetwork.model.Case.RiskLevel;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -17,7 +18,7 @@ public interface CaseRepository extends JpaRepository<Case, Long> {
 
     List<Case> findByStatus(CaseStatus status);
 
-    List<Case> findByRisk(RiskLevel risk);
+    List<Case> findByPriority(CasePriority priority);
 
     List<Case> findByInvestigator(String investigator);
 

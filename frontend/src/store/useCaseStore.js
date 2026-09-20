@@ -1,135 +1,171 @@
-import { create } from 'zustand'
-import { fetchCases, createCase, updateCase, deleteCase } from '../api/caseApi'
+import { create } from "zustand";
+import {
+  getCases,
+  getCaseStats,
+  createCase,
+  updateCase,
+  deleteCase,
+  searchCases,
+} from "../services/caseApi";
 
-const STORAGE_KEY_CASES = 'cni_cases'
-
-const getCachedCases = () => {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY_CASES)
-    return saved ? JSON.parse(saved) : []
-  } catch {
-    return []
-  }
-}
-
-/**
- * useCaseStore — global state for case management.
- * Used by Cases.jsx, Dashboard.jsx, Investigation.jsx.
- */
-const useCaseStore = create((set, get) => ({
-  // ── State ──────────────────────────────────────────────────
-  cases:        getCachedCases(),
-  activeCaseId: null,
-  loading:      false,
-  error:        null,
-
-  // ── Computed ───────────────────────────────────────────────
-  get activeCase() {
-    return get().cases.find(c => c.id === get().activeCaseId) || null
+const useCaseStore = create((set) => ({
+  cases: [],
+  stats: {
+    total: 0,
+    open: 0,
+    active: 0,
+    onHold: 0,
+    closed: 0,
   },
 
-  // ── Actions ────────────────────────────────────────────────
+  loading: false,
+  error: null,
 
-  /** Load all cases */
   loadCases: async () => {
-    set({ loading: true, error: null })
+    set({ loading: true, error: null });
     try {
-      const cases = await fetchCases()
-      if (Array.isArray(cases)) {
-        try {
-          localStorage.setItem(STORAGE_KEY_CASES, JSON.stringify(cases))
-        } catch {}
-        set({ cases, loading: false })
-      }
-    } catch (err) {
-      // Fallback to local storage if network request fails
-      const cached = getCachedCases()
-      set({ cases: cached, loading: false, error: err.message })
+      const cases = await getCases();
+      set({
+        cases: Array.isArray(cases) ? cases : [],
+        loading: false,
+      });
+    } catch (error) {
+      console.error("Failed to fetch cases:", error);
+      set({
+        loading: false,
+        error: error.message || "Failed to fetch cases",
+      });
     }
   },
 
-  /** Set the currently active case */
-  setActiveCase: (id) => set({ activeCaseId: id }),
+  fetchCases: async () => {
+    set({ loading: true, error: null });
 
-  /** Create a new case */
-  addCase: async (data) => {
     try {
-      const newCase = await createCase(data)
-      set(state => {
-        const updated = [newCase, ...state.cases.filter(c => c.id !== newCase.id)]
-        try {
-          localStorage.setItem(STORAGE_KEY_CASES, JSON.stringify(updated))
-        } catch {}
-        return { cases: updated, error: null }
-      })
-      return newCase
-    } catch (err) {
-      console.warn('Backend unavailable, creating case in local storage:', err)
-      // Resilient local docket creation so the officer is never blocked
-      const localCase = {
-        id: Date.now(),
-        caseNumber: data.caseNumber || `FIR-${Math.floor(100 + Math.random() * 900)}/2026`,
-        title: data.title,
-        description: data.description || '',
-        investigator: data.investigator || 'Lead Investigator',
-        department: data.department || 'Crime Branch',
-        risk: data.risk || 'medium',
-        status: data.status || 'active',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-      set(state => {
-        const updated = [localCase, ...state.cases]
-        try {
-          localStorage.setItem(STORAGE_KEY_CASES, JSON.stringify(updated))
-        } catch {}
-        return { cases: updated, error: null }
-      })
-      return localCase
+      const cases = await getCases();
+      set({
+        cases: Array.isArray(cases) ? cases : [],
+        loading: false,
+      });
+    } catch (error) {
+      console.error("Failed to fetch cases:", error);
+
+      set({
+        loading: false,
+        error: error.message || "Failed to fetch cases",
+      });
     }
   },
 
-  /** Update an existing case */
-  editCase: async (id, data) => {
+  fetchStats: async () => {
     try {
-      const updated = await updateCase(id, data)
-      set(state => {
-        const updatedList = state.cases.map(c => c.id === id ? { ...c, ...updated } : c)
-        try {
-          localStorage.setItem(STORAGE_KEY_CASES, JSON.stringify(updatedList))
-        } catch {}
-        return { cases: updatedList }
-      })
-    } catch (err) {
-      // Update locally
-      set(state => {
-        const updatedList = state.cases.map(c => c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c)
-        try {
-          localStorage.setItem(STORAGE_KEY_CASES, JSON.stringify(updatedList))
-        } catch {}
-        return { cases: updatedList }
-      })
+      const stats = await getCaseStats();
+
+      set({
+        stats: {
+          total: stats?.total ?? 0,
+          open: stats?.open ?? 0,
+          active: stats?.active ?? 0,
+          onHold: stats?.onHold ?? 0,
+          closed: stats?.closed ?? 0,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to fetch case statistics:", error);
     }
   },
 
-  /** Delete a case */
+  addCase: async (caseData) => {
+    set({ error: null });
+
+    try {
+      const newCase = await createCase(caseData);
+
+      set((state) => ({
+        cases: [newCase, ...state.cases],
+      }));
+
+      return newCase;
+    } catch (error) {
+      console.error("Failed to create case:", error);
+
+      set({
+        error: error.message || "Failed to create case",
+      });
+
+      throw error;
+    }
+  },
+
+  editCase: async (id, updates) => {
+    set({ error: null });
+
+    try {
+      const updatedCase = await updateCase(id, updates);
+
+      set((state) => ({
+        cases: state.cases.map((item) =>
+          item.id === id ? updatedCase : item
+        ),
+      }));
+
+      return updatedCase;
+    } catch (error) {
+      console.error("Failed to update case:", error);
+
+      set({
+        error: error.message || "Failed to update case",
+      });
+
+      throw error;
+    }
+  },
+
   removeCase: async (id) => {
-    try {
-      await deleteCase(id)
-    } catch (err) {
-      console.warn('Backend delete failed, removing locally:', err)
-    }
-    set(state => {
-      const remaining = state.cases.filter(c => c.id !== id)
-      try {
-        localStorage.setItem(STORAGE_KEY_CASES, JSON.stringify(remaining))
-      } catch {}
-      return {
-        cases: remaining,
-        activeCaseId: state.activeCaseId === id ? null : state.activeCaseId,
-      }
-    })
-  },
-}))
+    set({ error: null });
 
-export default useCaseStore
+    try {
+      await deleteCase(id);
+
+      set((state) => ({
+        cases: state.cases.filter((item) => item.id !== id),
+      }));
+    } catch (error) {
+      console.error("Failed to delete case:", error);
+
+      set({
+        error: error.message || "Failed to delete case",
+      });
+
+      throw error;
+    }
+  },
+
+  search: async (query) => {
+    if (!query?.trim()) {
+      return;
+    }
+
+    set({ loading: true, error: null });
+
+    try {
+      const results = await searchCases(query);
+
+      set({
+        cases: Array.isArray(results) ? results : [],
+        loading: false,
+      });
+    } catch (error) {
+      console.error("Failed to search cases:", error);
+
+      set({
+        loading: false,
+        error: error.message || "Failed to search cases",
+      });
+    }
+  },
+
+  clearError: () => set({ error: null }),
+}));
+
+export default useCaseStore;

@@ -1,30 +1,68 @@
-import axiosClient from './axiosClient'
+import apiClient from "../services/apiClient";
+import axios from "axios";
 
-/**
- * analysisApi — document upload and AI extraction pipeline.
- * Talks to POST /api/v1/analyse and GET /api/v1/stats.
- */
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1";
 
-/**
- * Upload a document for AI analysis.
- * @param {File} file — the document to analyse (PDF/DOCX/TXT/CSV)
- * @param {function} onProgress — optional upload progress callback (0–100)
- * @returns {Promise} — extraction result with entities + relationships
- */
-export const analyseDocument = (file, onProgress) => {
-  const formData = new FormData()
-  formData.append('file', file)
+// ============================================================
+// DOCUMENT ANALYSIS
+// ============================================================
 
-  return axiosClient.post('/analyse', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    onUploadProgress: (e) => {
-      if (onProgress && e.total) {
-        onProgress(Math.round((e.loaded / e.total) * 100))
-      }
+export const analyseDocument = async (file, caseId = null) => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  if (caseId !== null && caseId !== undefined) {
+    formData.append("caseId", caseId);
+  }
+
+  const response = await apiClient.post("/analyse", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
     },
-  })
-}
+  });
 
-/** Fetch dashboard summary statistics */
-export const fetchStats = () =>
-  axiosClient.get('/stats')
+  return response.data;
+};
+
+// ============================================================
+// DASHBOARD / NETWORK STATISTICS
+// ============================================================
+
+export const fetchStats = async () => {
+  const response = await axios.get(`${API_BASE_URL}/stats`);
+  return response.data;
+};
+
+// ============================================================
+// EVIDENCE
+// ============================================================
+
+export const fetchEvidence = async () => {
+  const response = await axios.get(`${API_BASE_URL}/evidence`);
+  return response.data;
+};
+
+export const fetchCdrEvidence = async () => {
+  const response = await axios.get(
+    `${API_BASE_URL}/evidence/source/CDR`
+  );
+
+  return response.data;
+};
+
+export const fetchFinancialEvidence = async () => {
+  const response = await axios.get(
+    `${API_BASE_URL}/evidence/source/FINANCIAL_TRANSACTION`
+  );
+
+  return response.data;
+};
+
+export const fetchEvidenceByStatus = async (status) => {
+  const response = await axios.get(
+    `${API_BASE_URL}/evidence/status/${status}`
+  );
+
+  return response.data;
+};

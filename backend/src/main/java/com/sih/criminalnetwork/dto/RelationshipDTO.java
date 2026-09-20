@@ -17,6 +17,10 @@ public class RelationshipDTO {
     public Double confidence;
     public String evidence;
     public String sourceFile;
+    public String firstSeen;
+public String lastSeen;
+public String createdAt;
+public String updatedAt;
 
     /** Convert JPA Relationship → RelationshipDTO */
     public static RelationshipDTO from(Relationship r) {
@@ -30,6 +34,24 @@ public class RelationshipDTO {
         dto.confidence = r.getConfidence();
         dto.evidence   = r.getEvidence();
         dto.sourceFile = r.getSourceFile();
-        return dto;
+dto.sourceFile = r.getSourceFile();
+dto.firstSeen = r.getFirstSeen() != null
+        ? r.getFirstSeen().toString()
+        : null;
+
+dto.lastSeen = r.getLastSeen() != null
+        ? r.getLastSeen().toString()
+        : null;
+
+dto.createdAt = r.getCreatedAt() != null
+        ? r.getCreatedAt().toString()
+        : null;
+
+dto.updatedAt = r.getUpdatedAt() != null
+        ? r.getUpdatedAt().toString()
+        : null;
+
+return dto;
+        
     }
 }
