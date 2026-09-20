@@ -141,7 +141,7 @@ export default function Landing() {
                 CrimeNet Intelligence
               </div>
               <div style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 500 }}>
-                National Crime Records Bureau &bull; SIH-26189
+                National Crime Records Bureau  
               </div>
             </div>
           </div>
@@ -607,7 +607,7 @@ export default function Landing() {
               </span>
             </div>
             <div style={{ fontSize: '0.74rem', color: '#64748B' }}>
-              National Crime Records Bureau &bull; Smart India Hackathon Prototype (SIH-26189)
+              National Crime Records Bureau &bull; Smart India Hackathon Prototype 
             </div>
           </div>
 
