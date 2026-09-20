@@ -474,49 +474,8 @@ export default function CDRAnalytics() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
-            <div
-              style={{
-                background: 'var(--primary-dim)',
-                border: '1px solid var(--border-glow)',
-                borderRadius: 'var(--radius-md)',
-                padding: '6px 10px',
-                color: 'var(--primary-light)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-              }}
-            >
-              <Radio size={14} /> SEC 91 CrPC / LAWFUL CARRIER REQUISITION
-            </div>
-            <span
-              style={{
-                fontSize: '0.72rem',
-                color: 'var(--success)',
-                background: 'rgba(16, 185, 129, 0.1)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                padding: '2px 8px',
-                borderRadius: 4,
-                fontWeight: 600,
-              }}
-            >
-              REAL DATA INGESTION READY (ZERO DEMO DATA)
-            </span>
-            <span
-              style={{
-                fontSize: '0.72rem',
-                color: 'var(--cyan, #06b6d4)',
-                background: 'rgba(6, 182, 212, 0.1)',
-                border: '1px solid rgba(6, 182, 212, 0.3)',
-                padding: '2px 8px',
-                borderRadius: 4,
-                fontWeight: 600,
-              }}
-            >
-              SEC 65B EVIDENCE ACT / SEC 63 BSA COMPLIANT
-            </span>
+        
+          
           </div>
           <h1 style={{ margin: 0, fontSize: '1.45rem', display: 'flex', alignItems: 'center', gap: 10 }}>
             Authorized CDR Analysis Module
@@ -743,7 +702,7 @@ export default function CDRAnalytics() {
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
                   <thead>
-                    <tr style={{ background: 'rgba(11, 17, 32, 0.6)', borderBottom: '1px solid var(--border)' }}>
+                    <tr style={{ background: 'rgba(234, 235, 238, 0.6)', borderBottom: '1px solid var(--border)' }}>
                       {['Caller (A-Party)', 'Direction', 'Recipient (B-Party)', 'Timestamp', 'Duration', 'Tower Cell / Location', 'Carrier', 'Threat Flags'].map((h) => (
                         <th key={h} style={{ padding: '12px 16px', color: 'var(--muted)', fontWeight: 600, fontSize: '0.72rem', letterSpacing: '0.04em' }}>
                           {h}
@@ -835,7 +794,7 @@ export default function CDRAnalytics() {
                                 style={{
                                   fontSize: '0.62rem',
                                   fontWeight: 700,
-                                  background: flag === 'NIGHT_CALL' ? 'rgba(239, 68, 68, 0.15)' : 'var(--primary-dim)',
+                                  background: flag === 'NIGHT_CALL' ? 'rgba(239, 229, 229, 0.15)' : 'var(--primary-dim)',
                                   color: flag === 'NIGHT_CALL' ? 'var(--danger)' : 'var(--primary-light)',
                                   border: `1px solid ${flag === 'NIGHT_CALL' ? 'rgba(239, 68, 68, 0.3)' : 'var(--border-glow)'}`,
                                   padding: '1px 6px',
@@ -868,7 +827,7 @@ export default function CDRAnalytics() {
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
                   <thead>
-                    <tr style={{ background: 'rgba(11, 17, 32, 0.6)', borderBottom: '1px solid var(--border)' }}>
+                    <tr style={{ background: 'rgba(216, 219, 226, 0.6)', borderBottom: '1px solid var(--border)' }}>
                       {['Tower ID & Sector', 'Geographic Location', 'Carriers Active', 'Matched Handsets in Sector', 'Call Intercepts', 'Threat Rating'].map((h) => (
                         <th key={h} style={{ padding: '12px 16px', color: 'var(--muted)', fontWeight: 600, fontSize: '0.72rem' }}>
                           {h}

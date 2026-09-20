@@ -39,6 +39,9 @@ async function sha256(message) {
   }
 }
 
+const BLOCKS_STORAGE_KEY = 'crime_net_blockchain_blocks'
+const WALLETS_STORAGE_KEY = 'crime_net_blockchain_wallets'
+
 export default function BlockchainAudit() {
   const toast = useToast()
   const { cases, loadCases } = useCaseStore()
@@ -47,7 +50,7 @@ export default function BlockchainAudit() {
   const [verifying, setVerifying] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Blockchain blocks and wallets stored dynamically in state (persisted in session)
+  // Blockchain blocks and wallets stored dynamically in state (persisted in localStorage)
   const [blocks, setBlocks] = useState([])
   const [wallets, setWallets] = useState([])
 
@@ -76,14 +79,59 @@ export default function BlockchainAudit() {
     mixerUsed: 'None Detected'
   })
 
+  // Helper to update blocks state & localStorage
+  const updateBlocks = (newBlocks) => {
+    setBlocks(newBlocks)
+    try {
+      localStorage.setItem(BLOCKS_STORAGE_KEY, JSON.stringify(newBlocks))
+    } catch (e) {
+      console.error('Failed to save blocks to localStorage', e)
+    }
+  }
+
+  // Helper to update wallets state & localStorage
+  const updateWallets = (newWallets) => {
+    setWallets(newWallets)
+    try {
+      localStorage.setItem(WALLETS_STORAGE_KEY, JSON.stringify(newWallets))
+    } catch (e) {
+      console.error('Failed to save wallets to localStorage', e)
+    }
+  }
+
   // Load cases on mount if empty
   useEffect(() => {
     loadCases()
   }, [loadCases])
 
+  // Load saved blocks and wallets from localStorage or initialize from active cases
+  useEffect(() => {
+    try {
+      const savedBlocks = localStorage.getItem(BLOCKS_STORAGE_KEY)
+      if (savedBlocks) {
+        const parsed = JSON.parse(savedBlocks)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setBlocks(parsed)
+        }
+      }
+      const savedWallets = localStorage.getItem(WALLETS_STORAGE_KEY)
+      if (savedWallets) {
+        const parsedW = JSON.parse(savedWallets)
+        if (Array.isArray(parsedW) && parsedW.length > 0) {
+          setWallets(parsedW)
+        }
+      }
+    } catch (e) {
+      console.error('Error loading saved blockchain data', e)
+    }
+  }, [])
+
   // Initialize blocks dynamically from active cases if blocks list is empty
   useEffect(() => {
     const generateCaseBlocks = async () => {
+      const savedBlocks = localStorage.getItem(BLOCKS_STORAGE_KEY)
+      if (savedBlocks) return // Already loaded from localStorage
+
       if (cases && cases.length > 0 && blocks.length === 0) {
         let prevHash = '0x0000000000000000000000000000000000000000000000000000000000000000'
         const generated = []
@@ -110,11 +158,11 @@ export default function BlockchainAudit() {
 
           prevHash = blockHash
         }
-        setBlocks(generated)
+        updateBlocks(generated)
       }
     }
     generateCaseBlocks()
-  }, [cases])
+  }, [cases, blocks.length])
 
   const handleVerifyLedger = () => {
     setVerifying(true)
@@ -174,7 +222,8 @@ export default function BlockchainAudit() {
     }
 
     setTimeout(() => {
-      setBlocks(prev => [...prev, newBlock])
+      const updated = [...blocks, newBlock]
+      updateBlocks(updated)
       setIsSealing(false)
       setShowSealModal(false)
       setSealForm({
@@ -195,7 +244,8 @@ export default function BlockchainAudit() {
       toast.warning('Address and Owner Alias are required.')
       return
     }
-    setWallets(prev => [walletForm, ...prev])
+    const updatedWallets = [walletForm, ...wallets]
+    updateWallets(updatedWallets)
     setShowWalletModal(false)
     setWalletForm({
       address: '',
@@ -212,12 +262,13 @@ export default function BlockchainAudit() {
   }
 
   const filteredBlocks = blocks.filter(b => {
-    const q = searchQuery.toLowerCase()
+    const q = searchQuery.toLowerCase().trim()
     return (
-      b.blockNumber.toString().includes(q) ||
-      b.evidenceCommitted.toLowerCase().includes(q) ||
-      b.blockHash.toLowerCase().includes(q) ||
-      b.validatorNode.toLowerCase().includes(q) ||
+      !q ||
+      String(b.blockNumber || '').includes(q) ||
+      String(b.evidenceCommitted || '').toLowerCase().includes(q) ||
+      String(b.blockHash || '').toLowerCase().includes(q) ||
+      String(b.validatorNode || '').toLowerCase().includes(q) ||
       b.officerBadge.toLowerCase().includes(q)
     )
   })
