@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react'
+import React, { useState } from 'react'
 import {
   Shield,
   Key,
@@ -65,14 +65,14 @@ export default function Settings() {
   }
 
   const handlePurgeAllIntelligence = async () => {
-    if (window.confirm('⚠️ Critical Action: Are you sure you want to purge all stored entities, relationships, and reset repository to clean zero state? This cannot be undone.')) {
+    if (window.confirm('⚠️ Critical Action: Are you sure you want to purge all stored cases, network graph nodes, CDR logs, blockchain blocks, and reset repository to clean zero state? This cannot be undone.')) {
       await purgeAllData()
       try {
         await axiosClient.post('/cases/reset')
       } catch (e) {}
-      await loadCases()
       localStorage.clear()
-      toast.success('System reset: All records purged. Repository is 100% clean and ready for real data.')
+      useCaseStore.setState({ cases: [], stats: { total: 0, open: 0, active: 0, onHold: 0, closed: 0 } })
+      toast.success('System reset: All cases, network graphs, CDR telemetry, and blockchain audit blocks purged!')
     }
   }
 

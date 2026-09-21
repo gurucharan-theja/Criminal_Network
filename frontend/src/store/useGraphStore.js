@@ -52,15 +52,44 @@ const useGraphStore = create((set, get) => ({
   /** Load full graph from backend */
   loadGraph: async () => {
     set({ loading: true, error: null })
+
+    // Check if user explicitly cleared the graph
+    try {
+      if (localStorage.getItem('cni_graph_cleared') === 'true') {
+        set({ nodes: [], links: [], loading: false })
+        return
+      }
+    } catch {}
+
     try {
       const data = await fetchGraph()
       const backendNodes = Array.isArray(data?.nodes) ? data.nodes : []
       const backendLinks = Array.isArray(data?.links) ? data.links : []
 
-      saveToStorage(backendNodes, backendLinks)
+      const cachedNodes = getCachedNodes()
+      const cachedLinks = getCachedLinks()
+
+      // Merge backend and cached nodes
+      const nodeMap = new Map()
+      ;[...backendNodes, ...cachedNodes].forEach(n => {
+        if (n && n.id) nodeMap.set(String(n.id), n)
+      })
+      const mergedNodes = Array.from(nodeMap.values())
+
+      const linkMap = new Map()
+      ;[...backendLinks, ...cachedLinks].forEach(l => {
+        if (l) {
+          const s = typeof l.source === 'object' ? l.source.id : l.source
+          const t = typeof l.target === 'object' ? l.target.id : l.target
+          linkMap.set(`${s}->${t}:${l.type || ''}`, l)
+        }
+      })
+      const mergedLinks = Array.from(linkMap.values())
+
+      saveToStorage(mergedNodes, mergedLinks)
       set({
-        nodes:       backendNodes,
-        links:       backendLinks,
+        nodes:       mergedNodes,
+        links:       mergedLinks,
         loading:     false,
         lastFetched: new Date().toISOString(),
       })
@@ -96,6 +125,9 @@ const useGraphStore = create((set, get) => ({
 
   /** Add newly extracted entities/links to graph (after upload) */
   mergeExtractionResult: (result) => {
+    try {
+      localStorage.removeItem('cni_graph_cleared')
+    } catch {}
     const { nodes, links } = get()
     const existingIds = new Set(nodes.map(n => String(n.id)))
     const incomingEntities = result.entities || []
@@ -138,11 +170,11 @@ const useGraphStore = create((set, get) => ({
   /** Remove a node and its edges from local state */
   removeNode: (nodeId) => {
     const { nodes, links } = get()
-    const updatedNodes = nodes.filter(n => n.id !== nodeId)
+    const updatedNodes = nodes.filter(n => String(n.id) !== String(nodeId))
     const updatedLinks = links.filter(l => {
       const s = typeof l.source === 'object' ? l.source.id : l.source
       const t = typeof l.target === 'object' ? l.target.id : l.target
-      return s !== nodeId && t !== nodeId
+      return String(s) !== String(nodeId) && String(t) !== String(nodeId)
     })
     saveToStorage(updatedNodes, updatedLinks)
     set({
@@ -155,8 +187,9 @@ const useGraphStore = create((set, get) => ({
   /** Reset graph */
   resetGraph: () => {
     try {
-      localStorage.removeItem(STORAGE_KEY_NODES)
-      localStorage.removeItem(STORAGE_KEY_LINKS)
+      localStorage.setItem(STORAGE_KEY_NODES, JSON.stringify([]))
+      localStorage.setItem(STORAGE_KEY_LINKS, JSON.stringify([]))
+      localStorage.setItem('cni_graph_cleared', 'true')
     } catch {}
     set({ nodes: [], links: [], selectedNodeId: null, error: null })
   },
@@ -169,8 +202,9 @@ const useGraphStore = create((set, get) => ({
       console.warn('Backend reset API call failed', e)
     }
     try {
-      localStorage.removeItem(STORAGE_KEY_NODES)
-      localStorage.removeItem(STORAGE_KEY_LINKS)
+      localStorage.setItem(STORAGE_KEY_NODES, JSON.stringify([]))
+      localStorage.setItem(STORAGE_KEY_LINKS, JSON.stringify([]))
+      localStorage.setItem('cni_graph_cleared', 'true')
     } catch {}
     set({ nodes: [], links: [], selectedNodeId: null, error: null })
   },

@@ -274,6 +274,12 @@ export default function BlockchainAudit() {
     toast.info('Tracked wallet removed from radar.')
   }
 
+  const handleClearBlockchainLedger = () => {
+    updateBlocks([])
+    updateWallets([])
+    toast.info('Cleared all evidence blocks & tracked wallets from local storage.')
+  }
+
   const filteredBlocks = blocks.filter(b => {
     const q = searchQuery.toLowerCase().trim()
     return (
@@ -377,6 +383,14 @@ export default function BlockchainAudit() {
           >
             <RefreshCw size={15} style={{ animation: verifying ? 'spin 1s linear infinite' : 'none' }} />
             {verifying ? 'Auditing...' : 'Audit Ledger'}
+          </button>
+
+          <button
+            onClick={handleClearBlockchainLedger}
+            className="btn btn-ghost btn-sm"
+            style={{ color: 'var(--danger)', fontSize: '0.75rem' }}
+          >
+            Clear Ledger
           </button>
         </div>
       </div>
