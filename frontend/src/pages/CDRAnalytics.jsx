@@ -35,19 +35,28 @@ export default function CDRAnalytics() {
   const [searchQuery, setSearchQuery] = useState('')
   const [carrierFilter, setCarrierFilter] = useState('all')
 
-  // Load persisted CDR records on mount
+  // Load persisted CDR records on mount & listen to data sync events
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setRecords(parsed)
+    const loadSavedCDR = () => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY)
+        if (saved !== null) {
+          const parsed = JSON.parse(saved)
+          if (Array.isArray(parsed)) {
+            setRecords(parsed)
+            return
+          }
         }
+      } catch (e) {
+        console.error('Failed to load persisted CDR records', e)
       }
-    } catch (e) {
-      console.error('Failed to load persisted CDR records', e)
     }
+
+    loadSavedCDR()
+
+    const handleSync = () => loadSavedCDR()
+    window.addEventListener('crime_net_data_changed', handleSync)
+    return () => window.removeEventListener('crime_net_data_changed', handleSync)
   }, [])
 
   // Helper to update records state & localStorage

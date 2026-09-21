@@ -59,6 +59,15 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadGraph()
+    useCaseStore.getState().loadCases()
+
+    const handleSync = () => {
+      loadGraph()
+      useCaseStore.getState().loadCases()
+    }
+
+    window.addEventListener('crime_net_data_changed', handleSync)
+    return () => window.removeEventListener('crime_net_data_changed', handleSync)
   }, [loadGraph])
 
   useEffect(() => {
@@ -131,18 +140,28 @@ export default function Dashboard() {
           0
         )
 
-  const casesOpen =
-    cases.length > 0
-      ? cases.filter((c) => {
-          const status = String(c.status || '').toUpperCase()
-
-          return (
-            status === 'OPEN' ||
-            status === 'ACTIVE' ||
-            status === 'ON_HOLD'
-          )
-        }).length
-      : Number(apiStats?.casesOpen || 0)
+  const isCasesStored = typeof localStorage !== 'undefined' && localStorage.getItem('crime_net_saved_cases') !== null
+  const casesOpen = isCasesStored
+    ? cases.filter((c) => {
+        const status = String(c.status || '').toUpperCase()
+        return (
+          status === 'OPEN' ||
+          status === 'ACTIVE' ||
+          status === 'ON_HOLD' ||
+          status === 'PENDING'
+        )
+      }).length
+    : (cases.length > 0
+        ? cases.filter((c) => {
+            const status = String(c.status || '').toUpperCase()
+            return (
+              status === 'OPEN' ||
+              status === 'ACTIVE' ||
+              status === 'ON_HOLD' ||
+              status === 'PENDING'
+            )
+          }).length
+        : Number(apiStats?.casesOpen || 0))
 
   const connectionsTotal =
     links.length > 0

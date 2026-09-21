@@ -49,19 +49,51 @@ const INITIAL_DEFAULT_CASES = [
   },
 ];
 
+const DELETED_CASES_KEY = "crime_net_deleted_case_ids";
+
+const getDeletedCaseIds = () => {
+  try {
+    const raw = localStorage.getItem(DELETED_CASES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+const addDeletedCaseId = (caseId, caseNumber) => {
+  try {
+    const deleted = getDeletedCaseIds();
+    const toAdd = [];
+    if (caseId) toAdd.push(String(caseId));
+    if (caseNumber) toAdd.push(String(caseNumber));
+    const updated = Array.from(new Set([...deleted, ...toAdd]));
+    localStorage.setItem(DELETED_CASES_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.error("Failed to save deleted case id:", e);
+  }
+};
+
+const isCaseDeleted = (c, deletedIds) => {
+  if (!c) return true;
+  const idStr = String(c.id || "");
+  const numStr = String(c.caseNumber || "");
+  return (idStr && deletedIds.includes(idStr)) || (numStr && deletedIds.includes(numStr));
+};
+
 const getStoredCases = () => {
+  const deletedIds = getDeletedCaseIds();
   try {
     const saved = localStorage.getItem(CASES_STORAGE_KEY);
-    if (saved) {
+    if (saved !== null) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.filter((c) => !isCaseDeleted(c, deletedIds));
       }
     }
   } catch (e) {
     console.error("Failed to read cases from localStorage:", e);
   }
-  return INITIAL_DEFAULT_CASES;
+  return INITIAL_DEFAULT_CASES.filter((c) => !isCaseDeleted(c, deletedIds));
 };
 
 const saveStoredCases = (cases) => {
@@ -87,28 +119,30 @@ const useCaseStore = create((set, get) => ({
 
   loadCases: async () => {
     set({ loading: true, error: null });
+    const deletedIds = getDeletedCaseIds();
+    const saved = localStorage.getItem(CASES_STORAGE_KEY);
+
+    // If local storage has already been initialized (including empty array []), respect local storage
+    if (saved !== null) {
+      const localCases = getStoredCases();
+      set({ cases: localCases, loading: false });
+      return;
+    }
+
     try {
       const apiCases = await getCases();
       if (Array.isArray(apiCases) && apiCases.length > 0) {
-        // Merge API cases with local cases
-        const localCases = getStoredCases();
-        const mergedMap = new Map();
-        [...apiCases, ...localCases].forEach((c) => {
-          const key = c.id || c.caseNumber || c.title;
-          if (!mergedMap.has(key)) {
-            mergedMap.set(key, c);
-          }
-        });
-        const merged = Array.from(mergedMap.values());
-        saveStoredCases(merged);
-        set({ cases: merged, loading: false });
+        const filteredApiCases = apiCases.filter((c) => !isCaseDeleted(c, deletedIds));
+        saveStoredCases(filteredApiCases);
+        set({ cases: filteredApiCases, loading: false });
         return;
       }
     } catch (error) {
       console.warn("Backend API unavailable for getCases, falling back to localStorage cases:", error.message);
     }
-    // Fallback to local stored cases
-    set({ cases: getStoredCases(), loading: false });
+    const filteredDefaults = INITIAL_DEFAULT_CASES.filter((c) => !isCaseDeleted(c, deletedIds));
+    saveStoredCases(filteredDefaults);
+    set({ cases: filteredDefaults, loading: false });
   },
 
   fetchCases: async () => {
@@ -210,12 +244,12 @@ const useCaseStore = create((set, get) => ({
     }
 
     const targetCase = get().cases.find((c) => String(c.id) === String(id) || c.caseNumber === id);
+    addDeletedCaseId(id, targetCase?.caseNumber);
 
-    set((state) => {
-      const updated = state.cases.filter((item) => String(item.id) !== String(id) && item.caseNumber !== id);
-      saveStoredCases(updated);
-      return { cases: updated, error: null };
-    });
+    const updated = get().cases.filter((item) => String(item.id) !== String(id) && item.caseNumber !== id);
+    saveStoredCases(updated);
+
+    set({ cases: updated, error: null });
 
     // CASCADE DELETE: Prune Graph nodes, CDRs, and Blockchain blocks linked to this case
     cascadeDeleteCaseData(id, targetCase);
