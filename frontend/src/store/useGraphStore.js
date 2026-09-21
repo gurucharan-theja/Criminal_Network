@@ -170,6 +170,7 @@ const useGraphStore = create((set, get) => ({
   /** Remove a node and its edges from local state */
   removeNode: (nodeId) => {
     const { nodes, links } = get()
+    const targetNode = nodes.find(n => String(n.id) === String(nodeId))
     const updatedNodes = nodes.filter(n => String(n.id) !== String(nodeId))
     const updatedLinks = links.filter(l => {
       const s = typeof l.source === 'object' ? l.source.id : l.source
@@ -182,6 +183,28 @@ const useGraphStore = create((set, get) => ({
       links: updatedLinks,
       selectedNodeId: null,
     })
+
+    // Cascade prune CDR records matching this node's phone number or IMEI
+    if (targetNode) {
+      try {
+        const rawCdr = localStorage.getItem('crime_net_cdr_records')
+        if (rawCdr) {
+          const cdrs = JSON.parse(rawCdr)
+          const targetNum = targetNode.name ? targetNode.name.replace(/\D/g, '') : ''
+          const updatedCdrs = cdrs.filter(c => {
+            const callerDigits = String(c.callerNumber || '').replace(/\D/g, '')
+            const receiverDigits = String(c.receiverNumber || '').replace(/\D/g, '')
+            if (targetNum && (callerDigits.includes(targetNum) || receiverDigits.includes(targetNum))) return false
+            return true
+          })
+          localStorage.setItem('crime_net_cdr_records', JSON.stringify(updatedCdrs))
+        }
+      } catch (e) {}
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crime_net_data_changed'))
+    }
   },
 
   /** Reset graph */
@@ -192,6 +215,9 @@ const useGraphStore = create((set, get) => ({
       localStorage.setItem('cni_graph_cleared', 'true')
     } catch {}
     set({ nodes: [], links: [], selectedNodeId: null, error: null })
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crime_net_data_changed'))
+    }
   },
 
   /** Purge all entities and relations from both backend and local state */
@@ -207,7 +233,18 @@ const useGraphStore = create((set, get) => ({
       localStorage.setItem('cni_graph_cleared', 'true')
     } catch {}
     set({ nodes: [], links: [], selectedNodeId: null, error: null })
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crime_net_data_changed'))
+    }
   },
 }))
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('crime_net_data_changed', () => {
+    const nodes = getCachedNodes()
+    const links = getCachedLinks()
+    useGraphStore.setState({ nodes, links })
+  })
+}
 
 export default useGraphStore

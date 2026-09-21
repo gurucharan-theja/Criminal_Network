@@ -209,11 +209,20 @@ const useCaseStore = create((set, get) => ({
       console.warn("Backend API failed for deleteCase, removing locally:", error.message);
     }
 
+    const targetCase = get().cases.find((c) => String(c.id) === String(id) || c.caseNumber === id);
+
     set((state) => {
-      const updated = state.cases.filter((item) => item.id !== id);
+      const updated = state.cases.filter((item) => String(item.id) !== String(id) && item.caseNumber !== id);
       saveStoredCases(updated);
       return { cases: updated, error: null };
     });
+
+    // CASCADE DELETE: Prune Graph nodes, CDRs, and Blockchain blocks linked to this case
+    cascadeDeleteCaseData(id, targetCase);
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("crime_net_data_changed"));
+    }
   },
 
   search: async (query) => {
@@ -246,5 +255,84 @@ const useCaseStore = create((set, get) => ({
 
   clearError: () => set({ error: null }),
 }));
+
+function cascadeDeleteCaseData(caseId, targetCase) {
+  const caseIdStr = String(caseId);
+  const caseNumStr = targetCase?.caseNumber ? String(targetCase.caseNumber) : '';
+  const caseTitleStr = targetCase?.title ? String(targetCase.title).toLowerCase() : '';
+
+  // 1. Cascade Delete Graph Nodes & Links in localStorage
+  try {
+    const rawNodes = localStorage.getItem('cni_graph_nodes');
+    const rawLinks = localStorage.getItem('cni_graph_links');
+    const nodes = rawNodes ? JSON.parse(rawNodes) : [];
+    const links = rawLinks ? JSON.parse(rawLinks) : [];
+
+    const updatedNodes = nodes.filter((n) => {
+      if (!n) return false;
+      const nCaseId = String(n.caseId || '');
+      const nCaseIds = Array.isArray(n.caseIds) ? n.caseIds.map(String) : [];
+      if (nCaseId === caseIdStr || (caseNumStr && nCaseId === caseNumStr)) return false;
+      if (nCaseIds.includes(caseIdStr) || (caseNumStr && nCaseIds.includes(caseNumStr))) return false;
+      return true;
+    });
+
+    const nodeIdsLeft = new Set(updatedNodes.map((n) => String(n.id)));
+    const updatedLinks = links.filter((l) => {
+      if (!l) return false;
+      const s = String(typeof l.source === 'object' ? l.source.id : l.source);
+      const t = String(typeof l.target === 'object' ? l.target.id : l.target);
+      return nodeIdsLeft.has(s) && nodeIdsLeft.has(t);
+    });
+
+    localStorage.setItem('cni_graph_nodes', JSON.stringify(updatedNodes));
+    localStorage.setItem('cni_graph_links', JSON.stringify(updatedLinks));
+  } catch (e) {
+    console.error('Error cascade deleting graph nodes:', e);
+  }
+
+  // 2. Cascade Delete Blockchain Audit Blocks in localStorage
+  try {
+    const rawBlocks = localStorage.getItem('crime_net_blockchain_blocks');
+    if (rawBlocks) {
+      const blocks = JSON.parse(rawBlocks);
+      const updatedBlocks = blocks.filter((b) => {
+        if (!b) return false;
+        const committed = String(b.evidenceCommitted || '').toLowerCase();
+        if (committed.includes(caseIdStr.toLowerCase())) return false;
+        if (caseNumStr && committed.includes(caseNumStr.toLowerCase())) return false;
+        if (caseTitleStr && committed.includes(caseTitleStr)) return false;
+        return true;
+      });
+      localStorage.setItem('crime_net_blockchain_blocks', JSON.stringify(updatedBlocks));
+    }
+  } catch (e) {
+    console.error('Error cascade deleting blockchain blocks:', e);
+  }
+
+  // 3. Cascade Delete CDR Records in localStorage
+  try {
+    const rawCdr = localStorage.getItem('crime_net_cdr_records');
+    if (rawCdr) {
+      const cdrs = JSON.parse(rawCdr);
+      const updatedCdrs = cdrs.filter((c) => {
+        if (!c) return false;
+        const cId = String(c.caseId || '');
+        if (cId === caseIdStr || (caseNumStr && cId === caseNumStr)) return false;
+        return true;
+      });
+      localStorage.setItem('crime_net_cdr_records', JSON.stringify(updatedCdrs));
+    }
+  } catch (e) {
+    console.error('Error cascade deleting CDR records:', e);
+  }
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("crime_net_data_changed", () => {
+    const cases = getStoredCases();
+    useCaseStore.setState({ cases });
+  });
+}
 
 export default useCaseStore;

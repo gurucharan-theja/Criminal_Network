@@ -111,27 +111,37 @@ export default function BlockchainAudit() {
       const savedBlocks = localStorage.getItem(BLOCKS_STORAGE_KEY)
       if (savedBlocks) {
         const parsed = JSON.parse(savedBlocks)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setBlocks(parsed)
-        }
+        setBlocks(Array.isArray(parsed) ? parsed : [])
       }
       const savedWallets = localStorage.getItem(WALLETS_STORAGE_KEY)
       if (savedWallets) {
         const parsedW = JSON.parse(savedWallets)
-        if (Array.isArray(parsedW) && parsedW.length > 0) {
-          setWallets(parsedW)
-        }
+        setWallets(Array.isArray(parsedW) ? parsedW : [])
       }
     } catch (e) {
       console.error('Error loading saved blockchain data', e)
     }
   }, [])
 
+  // Synchronize Blockchain blocks and wallets when data is changed elsewhere
+  useEffect(() => {
+    const handleSync = () => {
+      try {
+        const savedBlocks = localStorage.getItem(BLOCKS_STORAGE_KEY)
+        setBlocks(savedBlocks ? JSON.parse(savedBlocks) : [])
+        const savedWallets = localStorage.getItem(WALLETS_STORAGE_KEY)
+        setWallets(savedWallets ? JSON.parse(savedWallets) : [])
+      } catch (e) {}
+    }
+    window.addEventListener('crime_net_data_changed', handleSync)
+    return () => window.removeEventListener('crime_net_data_changed', handleSync)
+  }, [])
+
   // Initialize blocks dynamically from active cases if blocks list is empty
   useEffect(() => {
     const generateCaseBlocks = async () => {
       const savedBlocks = localStorage.getItem(BLOCKS_STORAGE_KEY)
-      if (savedBlocks) return // Already loaded from localStorage
+      if (savedBlocks && savedBlocks !== '[]') return // Already loaded from localStorage
 
       if (cases && cases.length > 0 && blocks.length === 0) {
         let prevHash = '0x0000000000000000000000000000000000000000000000000000000000000000'
@@ -234,6 +244,9 @@ export default function BlockchainAudit() {
         validatorNode: 'Node 1 (HQ Consortium)',
         content: ''
       })
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('crime_net_data_changed'))
+      }
       toast.success(`Block #${newBlockNumber} successfully sealed and committed to Consortium Ledger!`)
     }, 600)
   }
@@ -259,24 +272,36 @@ export default function BlockchainAudit() {
       darknetTies: 'Under Surveillance',
       mixerUsed: 'None Detected'
     })
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crime_net_data_changed'))
+    }
     toast.success('Tracked suspect wallet registered on monitoring radar.')
   }
 
   const handleDeleteBlock = (blockNumber) => {
     const updated = blocks.filter((b) => b.blockNumber !== blockNumber)
     updateBlocks(updated)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crime_net_data_changed'))
+    }
     toast.info(`Evidence Block #${blockNumber} removed from view.`)
   }
 
   const handleDeleteWallet = (address) => {
     const updated = wallets.filter((w) => w.address !== address)
     updateWallets(updated)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crime_net_data_changed'))
+    }
     toast.info('Tracked wallet removed from radar.')
   }
 
   const handleClearBlockchainLedger = () => {
     updateBlocks([])
     updateWallets([])
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crime_net_data_changed'))
+    }
     toast.info('Cleared all evidence blocks & tracked wallets from local storage.')
   }
 

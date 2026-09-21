@@ -329,15 +329,43 @@ export default function CDRAnalytics() {
     }
   }
 
+  // Synchronize CDR records when data is changed elsewhere
+  useEffect(() => {
+    const handleSync = () => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY)
+        setRecords(saved ? JSON.parse(saved) : [])
+      } catch (e) {}
+    }
+    window.addEventListener('crime_net_data_changed', handleSync)
+    return () => window.removeEventListener('crime_net_data_changed', handleSync)
+  }, [])
+
   const handleClearRecords = () => {
     updateRecords([])
-    toast.info('Cleared all saved CDR records from local storage.')
+    useGraphStore.getState().resetGraph()
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crime_net_data_changed'))
+    }
+    toast.info('Cleared all saved CDR records and associated graph nodes.')
   }
 
   const handleDeleteSingleRecord = (id) => {
+    const target = records.find(r => r.id === id)
     const updated = records.filter((r) => r.id !== id)
     updateRecords(updated)
-    toast.info('CDR record deleted from ledger.')
+
+    if (target) {
+      const callerId = `ph-${String(target.callerNumber || '').replace(/\D/g, '')}`
+      const receiverId = `ph-${String(target.receiverNumber || '').replace(/\D/g, '')}`
+      useGraphStore.getState().removeNode(callerId)
+      useGraphStore.getState().removeNode(receiverId)
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crime_net_data_changed'))
+    }
+    toast.info('CDR record deleted from ledger & graph.')
   }
 
   // Safe filter logic with null/undefined guards
