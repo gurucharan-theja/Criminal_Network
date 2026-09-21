@@ -498,78 +498,67 @@ export default function UploadData() {
           // ---------------------------------------------------
           // Phones
           // ---------------------------------------------------
+          // Phones
+          // ---------------------------------------------------
 
-          const phoneMatches =
-            text.match(
-              /\+?[0-9]{10,13}/g
-            ) || []
+          const phoneMatches = text.match(/\+?[0-9]{10,13}/g) || []
+          const uniquePhones = Array.from(new Set(phoneMatches))
 
-          phoneMatches.forEach(
-            (ph, idx) => {
-
-              extractedEntities.push({
-
-                id:
-                  `phone-${Date.now()}-${idx}`,
-
-                name:
-                  ph,
-
-                type:
-                  'Phone',
-
-                role:
-                  'Intercepted Telecom Endpoint',
-
-                risk:
-                  'medium',
-
-                sourceFile:
-                  f.name,
-
-                connections:
-                  1
-              })
-            }
-          )
+          uniquePhones.forEach((ph, idx) => {
+            extractedEntities.push({
+              id: `phone-${Date.now()}-${idx}`,
+              name: ph,
+              type: 'Phone',
+              role: 'Intercepted Telecom Endpoint',
+              risk: 'medium',
+              sourceFile: f.name,
+              connections: 1
+            })
+          })
 
           // ---------------------------------------------------
           // Vehicles
           // ---------------------------------------------------
 
-          const vehicleMatches =
-            text.match(
-              /[A-Z]{2}[-\s]?[0-9]{1,2}[-\s]?[A-Z]{1,2}[-\s]?[0-9]{4}/g
-            ) || []
+          const vehicleMatches = text.match(/[A-Z]{2}[-\s]?[0-9]{1,2}[-\s]?[A-Z]{1,2}[-\s]?[0-9]{4}/g) || []
+          const uniqueVehicles = Array.from(new Set(vehicleMatches))
 
-          vehicleMatches.forEach(
-            (vh, idx) => {
+          uniqueVehicles.forEach((vh, idx) => {
+            extractedEntities.push({
+              id: `veh-${Date.now()}-${idx}`,
+              name: vh,
+              type: 'Vehicle',
+              role: 'Operational Transport',
+              risk: 'high',
+              sourceFile: f.name,
+              connections: 1
+            })
+          })
 
-              extractedEntities.push({
+          // ---------------------------------------------------
+          // Bank Accounts
+          // ---------------------------------------------------
 
-                id:
-                  `veh-${Date.now()}-${idx}`,
-
-                name:
-                  vh,
-
-                type:
-                  'Vehicle',
-
-                role:
-                  'Operational Transport',
-
-                risk:
-                  'high',
-
-                sourceFile:
-                  f.name,
-
-                connections:
-                  1
-              })
+          const accountMatches = text.match(/(?:Account|Acc|A\/c|HDFC|ICICI|SBI|Bank|Vault)?\s*[:\-=]?\s*\b([0-9]{10,16})\b/gi) || []
+          const uniqueAccounts = new Set()
+          accountMatches.forEach((m) => {
+            const digits = m.replace(/\D/g, '')
+            if (digits.length >= 10 && !digits.startsWith('91') && !digits.startsWith('97') && !digits.startsWith('98')) {
+              uniqueAccounts.add(digits)
             }
-          )
+          })
+
+          Array.from(uniqueAccounts).forEach((accNum, idx) => {
+            extractedEntities.push({
+              id: `acc-${Date.now()}-${idx}`,
+              name: accNum,
+              type: 'Account',
+              role: 'Financial Account Conduit',
+              risk: 'high',
+              sourceFile: f.name,
+              connections: 1
+            })
+          })
 
           // ---------------------------------------------------
           // Strict Person Entity Extraction Engine
@@ -585,30 +574,50 @@ export default function UploadData() {
             'docket', 'memo', 'fir', 'general', 'diary', 'branch', 'sub', 'inspector', 'assistant',
             'superintendent', 'commissioner', 'headquarters', 'hq', 'wing', 'range', 'zone', 'squad',
             'accused', 'suspect', 'witness', 'complainant', 'informant', 'officer', 'shri', 'smt', 'mr',
-            'mrs', 'dr', 'alias', 'gangster', 'don', 'bhai', 'kingpin', 'mastermind', 'operative', 'financier'
+            'mrs', 'dr', 'alias', 'gangster', 'don', 'bhai', 'kingpin', 'mastermind', 'operative', 'financier',
+            'receiver', 'fence', 'associate', 'leader', 'rider', 'mechanic', 'snatcher', 'pillion'
           ])
 
           const personPatterns = [
-            /\b(?:Shri|Smt|Mr\.?|Mrs\.?|Ms\.?|Dr\.?|Accused|Suspect|Alias|Gangster|Don|Bhai|Kingpin|Mastermind|Operative|Financier|Courier|Handler|Officer|Inspector)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b/g,
+            /\b(?:Shri|Smt|Mr\.?|Mrs\.?|Ms\.?|Dr\.?|Accused|Suspect|Receiver|Fence|Associate|Leader|Rider|Mechanic|Financier|Owner)\s*[:\-=]?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})\b/g,
+            /\b([A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s*\((?:Alias|Role|\+91|Owner|Phone)[:\s]/g,
             /\b([A-Z][a-z]+\s+[A-Z][a-z]+)\s+(?:alias|@)\s+([A-Z][a-zA-Z0-9]+)\b/g,
-            /\b(?:named|identified as|arrested|interrogated|handler|mule|courier|operates|contacted)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)\b/g,
+            /\b(?:identified as|accused|suspect|jeweler|mechanic|rider|snatcher|buyer|financier)\s+([A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/gi,
           ]
 
           const ROLE_RULES = [
-            { role: 'Kingpin / Mastermind', keywords: ['kingpin', 'mastermind', 'boss', 'leader', 'syndicate head', 'chief', 'gangster', 'don'], risk: 'high' },
-            { role: 'Financier', keywords: ['hawala', 'financier', 'investor', 'treasurer', 'accountant', 'mule account', 'laundering'], risk: 'high' },
-            { role: 'Operative', keywords: ['operative', 'courier', 'handler', 'enforcer', 'shooter', 'agent', 'carrier'], risk: 'medium' },
-            { role: 'Logistics / Transport', keywords: ['driver', 'supplier', 'smuggler', 'transporter', 'arms dealer', 'vehicle'], risk: 'medium' },
-            { role: 'Informant / Tipster', keywords: ['informant', 'tipster', 'source', 'mole', 'insider'], risk: 'low' },
+            { role: 'Kingpin / Gang Leader', keywords: ['leader', 'kingpin', 'mastermind', 'boss', 'chief', 'gangster', 'don', 'rider'], risk: 'high' },
+            { role: 'Illegal Gold Buyer / Financier', keywords: ['receiver', 'fence', 'buyer', 'jeweller', 'jeweler', 'financier', 'gold'], risk: 'high' },
+            { role: 'Pillion Rider / Snatcher', keywords: ['pillion', 'snatcher', 'operative', 'courier', 'handler'], risk: 'high' },
+            { role: 'Vehicle Modifier / Mechanic', keywords: ['mechanic', 'plate', 'modification', 'chassis', 'supplier'], risk: 'medium' },
           ]
 
           const extractedPersonNames = new Set()
 
+          // 1. Line-by-line pattern matching e.g. "1. Accused: Mohammed Razi", "3. Receiver / Fence: Ramesh Kumar Agarwal"
+          const textLines = text.split(/\r?\n/)
+          textLines.forEach((line) => {
+            const trimmedLine = line.trim()
+            if (!trimmedLine) return
+
+            const lineMatch = trimmedLine.match(/^(?:\d+[\.\)]\s*)?(?:Accused|Suspect|Receiver|Fence|Associate|Target|Leader|Rider|Mechanic|Financier|Owner|Name|Co-Accused|Complainant)(?:\s*[\/\&]\s*[A-Za-z]+)?\s*[:\-=]\s*([A-Za-z\s]{3,40})/i)
+            if (lineMatch && lineMatch[1]) {
+              let candidate = lineMatch[1].split('(')[0].trim()
+              candidate = candidate.replace(/^(?:Shri|Smt|Mr\.?|Mrs\.?|Ms\.?|Dr\.?)\s+/i, '').trim()
+              const words = candidate.split(/\s+/).map((w) => w.toLowerCase())
+              if (candidate.length >= 3 && !words.some((w) => NON_PERSON_WORDS.has(w))) {
+                extractedPersonNames.add(candidate)
+              }
+            }
+          })
+
+          // 2. Inline regex pattern matching
           personPatterns.forEach((pattern) => {
             const freshPattern = new RegExp(pattern.source, pattern.flags)
             const matches = Array.from(text.matchAll(freshPattern))
             matches.forEach((match) => {
-              const matchedName = (match[1] || match[0]).trim()
+              let matchedName = (match[1] || match[0]).split('(')[0].trim()
+              matchedName = matchedName.replace(/^(?:Shri|Smt|Mr\.?|Mrs\.?|Ms\.?|Dr\.?)\s+/i, '').trim()
               const words = matchedName.split(/\s+/).map((w) => w.toLowerCase())
               if (
                 matchedName.length >= 4 &&
@@ -617,24 +626,6 @@ export default function UploadData() {
                 extractedPersonNames.add(matchedName)
               }
             })
-          })
-
-          const textLines = text.split(/\r?\n/)
-          textLines.forEach((line) => {
-            const trimmedLine = line.trim()
-            if (!trimmedLine) return
-
-            const labelMatch = trimmedLine.match(/^(?:Accused|Suspect|Target|Name|Kingpin|Financier|Operative|Courier|Handler|Co-Accused)\s*(?:Name)?\s*[:\-=]\s*([A-Za-z\s]{3,35})/i)
-            if (labelMatch && labelMatch[1]) {
-              const nameCandidate = labelMatch[1].trim()
-              const words = nameCandidate.split(/\s+/).map((w) => w.toLowerCase())
-              if (
-                nameCandidate.length >= 4 &&
-                !words.some((w) => NON_PERSON_WORDS.has(w))
-              ) {
-                extractedPersonNames.add(nameCandidate)
-              }
-            }
           })
 
           let personIdx = 0
@@ -646,7 +637,7 @@ export default function UploadData() {
 
             const idxInText = text.toLowerCase().indexOf(nameLower)
             if (idxInText !== -1) {
-              const windowText = text.substring(Math.max(0, idxInText - 150), Math.min(text.length, idxInText + 150)).toLowerCase()
+              const windowText = text.substring(Math.max(0, idxInText - 180), Math.min(text.length, idxInText + 180)).toLowerCase()
               for (const rule of ROLE_RULES) {
                 if (rule.keywords.some((kw) => windowText.includes(kw))) {
                   assignedRole = rule.role
@@ -668,7 +659,7 @@ export default function UploadData() {
           })
 
           // ---------------------------------------------------
-          // Contextual Relationship Link Extraction (Person Links)
+          // Contextual Relationship Link Extraction Engine
           // ---------------------------------------------------
 
           const personEntities = extractedEntities.filter((e) => e.type === 'Person')
@@ -678,33 +669,59 @@ export default function UploadData() {
 
           let relCounter = 1
 
-          // 1. Person <-> Person (Associate Links)
+          // 1. Person <-> Person (Syndicate Co-Accused & Associate Links)
           for (let i = 0; i < personEntities.length; i++) {
             for (let j = i + 1; j < personEntities.length; j++) {
+              const p1 = personEntities[i]
+              const p2 = personEntities[j]
+              let relType = 'ASSOCIATE'
+              let desc = `Syndicate associate conduit between ${p1.name} and ${p2.name}`
+
+              if (p1.role.includes('Buyer') || p2.role.includes('Buyer') || p1.role.includes('Financier') || p2.role.includes('Financier')) {
+                relType = 'ILLEGAL_FENCE_TX'
+                desc = `Stolen property transaction link between ${p1.name} and ${p2.name}`
+              } else if (p1.role.includes('Mechanic') || p2.role.includes('Mechanic')) {
+                relType = 'VEHICLE_MODIFIER'
+                desc = `Illegal vehicle alteration tie between ${p1.name} and ${p2.name}`
+              }
+
               extractedRelations.push({
                 id: `rel-p2p-${Date.now()}-${relCounter++}`,
-                source: personEntities[i].id,
-                target: personEntities[j].id,
-                type: 'ASSOCIATE',
+                source: p1.id,
+                target: p2.id,
+                type: relType,
                 weight: 4,
                 sourceFile: f.name,
-                description: `Syndicate associate link between ${personEntities[i].name} and ${personEntities[j].name}`
+                description: desc
               })
             }
           }
 
           // 2. Person <-> Phone (Telecom Intercept Links)
           personEntities.forEach((p) => {
+            const pLower = p.name.toLowerCase()
+            const pIdx = text.toLowerCase().indexOf(pLower)
+
             phoneEntities.forEach((ph) => {
-              extractedRelations.push({
-                id: `rel-p2ph-${Date.now()}-${relCounter++}`,
-                source: p.id,
-                target: ph.id,
-                type: 'FREQUENT_CALL',
-                weight: 3,
-                sourceFile: f.name,
-                description: `${p.name} associated with phone endpoint ${ph.name}`
-              })
+              const phIdx = text.indexOf(ph.name)
+              let isNearest = true
+
+              // If phone appears near person in text (within 150 chars), make direct link
+              if (pIdx !== -1 && phIdx !== -1 && Math.abs(pIdx - phIdx) > 250) {
+                isNearest = false
+              }
+
+              if (isNearest || phoneEntities.length === 1 || personEntities.length === 1) {
+                extractedRelations.push({
+                  id: `rel-p2ph-${Date.now()}-${relCounter++}`,
+                  source: p.id,
+                  target: ph.id,
+                  type: 'FREQUENT_CALL',
+                  weight: 3,
+                  sourceFile: f.name,
+                  description: `${p.name} telecom intercept tie to phone ${ph.name}`
+                })
+              }
             })
           })
 
@@ -733,7 +750,7 @@ export default function UploadData() {
                 type: 'FINANCIAL_TX',
                 weight: 5,
                 sourceFile: f.name,
-                description: `${p.name} financial transfer connection to account ${acc.name}`
+                description: `${p.name} financial wire transfer tie to account ${acc.name}`
               })
             })
           })
