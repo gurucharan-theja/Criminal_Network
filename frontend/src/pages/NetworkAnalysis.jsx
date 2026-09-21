@@ -25,15 +25,15 @@ const DEMO_ENTITIES = [
 ]
 
 const DEMO_RELATIONSHIPS = [
-  { id: 'r1', source: '1', target: '2', type: 'FINANCIAL_TX', weight: 4 },
-  { id: 'r2', source: '1', target: '3', type: 'BENEFICIAL_OWNER', weight: 3 },
-  { id: 'r3', source: '2', target: '6', type: 'ACCOUNT_HOLDER', weight: 5 },
-  { id: 'r4', source: '3', target: '7', type: 'REGISTERED_TO', weight: 2 },
-  { id: 'r5', source: '1', target: '5', type: 'FREQUENT_CALL', weight: 3 },
-  { id: 'r6', source: '4', target: '1', type: 'ASSOCIATE', weight: 2 },
-  { id: 'r7', source: '4', target: '8', type: 'VISITED', weight: 1 },
-  { id: 'r8', source: '9', target: '1', type: 'RECRUIT', weight: 3 },
-  { id: 'r9', source: '9', target: '6', type: 'WIRE_TRANSFER', weight: 4 },
+  { id: 'r1', source: '1', target: '2', type: 'FINANCIAL_TX', weight: 4, defaultCaseIds: ['case-001', 'CR-2026-9041'] },
+  { id: 'r2', source: '1', target: '3', type: 'BENEFICIAL_OWNER', weight: 3, defaultCaseIds: ['case-001', 'CR-2026-9041'] },
+  { id: 'r3', source: '2', target: '6', type: 'ACCOUNT_HOLDER', weight: 5, defaultCaseIds: ['case-001', 'CR-2026-9041'] },
+  { id: 'r4', source: '3', target: '7', type: 'REGISTERED_TO', weight: 2, defaultCaseIds: ['case-002', 'CR-2026-8812'] },
+  { id: 'r5', source: '1', target: '5', type: 'FREQUENT_CALL', weight: 3, defaultCaseIds: ['case-002', 'case-003', 'CR-2026-8812', 'CR-2026-7734'] },
+  { id: 'r6', source: '4', target: '1', type: 'ASSOCIATE', weight: 2, defaultCaseIds: ['case-002', 'CR-2026-8812'] },
+  { id: 'r7', source: '4', target: '8', type: 'VISITED', weight: 1, defaultCaseIds: ['case-002', 'CR-2026-8812'] },
+  { id: 'r8', source: '9', target: '1', type: 'RECRUIT', weight: 3, defaultCaseIds: ['case-003', 'CR-2026-7734'] },
+  { id: 'r9', source: '9', target: '6', type: 'WIRE_TRANSFER', weight: 4, defaultCaseIds: ['case-003', 'CR-2026-7734'] },
 ]
 
 export default function NetworkAnalysis() {
@@ -137,7 +137,7 @@ export default function NetworkAnalysis() {
     return baseEntities.filter(e => connectedNodeIds.has(String(e.id || e.nodeId)))
   }, [baseEntities, baseRelationships, selectedCategory])
 
-  // Case Docket Filtered Entities
+  // Case Docket Filtered Entities (Strict Case Isolation)
   const caseFilteredEntities = useMemo(() => {
     if (selectedCaseId === 'ALL') return categoryFilteredEntities
 
@@ -190,7 +190,7 @@ export default function NetworkAnalysis() {
         primaryCaseNodeIds.add(eId)
         return
       }
-      if (['1', '6', '9'].includes(eId) && (targetCaseIdStr.includes('case-003') || caseNum.includes('7734') || caseTitle.includes('ransomware') || caseTitle.includes('ledger'))) {
+      if (['1', '5', '6', '9'].includes(eId) && (targetCaseIdStr.includes('case-003') || caseNum.includes('7734') || caseTitle.includes('ransomware') || caseTitle.includes('ledger'))) {
         primaryCaseNodeIds.add(eId)
         return
       }
@@ -200,17 +200,8 @@ export default function NetworkAnalysis() {
       return categoryFilteredEntities
     }
 
-    const connectedCaseNodeIds = new Set(primaryCaseNodeIds)
-    baseRelationships.forEach(r => {
-      const sId = String(typeof r.source === 'object' ? r.source.id : r.source)
-      const tId = String(typeof r.target === 'object' ? r.target.id : r.target)
-
-      if (primaryCaseNodeIds.has(sId)) connectedCaseNodeIds.add(tId)
-      if (primaryCaseNodeIds.has(tId)) connectedCaseNodeIds.add(sId)
-    })
-
-    return categoryFilteredEntities.filter(e => connectedCaseNodeIds.has(String(e.id || e.nodeId)))
-  }, [categoryFilteredEntities, selectedCaseId, availableCases, baseRelationships])
+    return categoryFilteredEntities.filter(e => primaryCaseNodeIds.has(String(e.id || e.nodeId)))
+  }, [categoryFilteredEntities, selectedCaseId, availableCases])
 
   // Active selected entity object
   const activeSelectedNode = useMemo(() => {
@@ -278,14 +269,36 @@ export default function NetworkAnalysis() {
 
   const finalFilteredNodeIds = useMemo(() => new Set(finalFilteredEntities.map(e => String(e.id || e.nodeId))), [finalFilteredEntities])
 
-  // Filter relationships connecting only visible entities
+  // Filter relationships strictly belonging to the selected case
   const finalFilteredRelationships = useMemo(() => {
     return baseRelationships.filter(r => {
       const sId = String(typeof r.source === 'object' ? r.source.id : r.source)
       const tId = String(typeof r.target === 'object' ? r.target.id : r.target)
-      return finalFilteredNodeIds.has(sId) && finalFilteredNodeIds.has(tId)
+
+      if (!finalFilteredNodeIds.has(sId) || !finalFilteredNodeIds.has(tId)) return false
+
+      if (selectedCaseId === 'ALL') return true
+
+      const targetCase = availableCases.find(c => String(c.id) === String(selectedCaseId) || c.caseNumber === selectedCaseId)
+      const targetCaseIdStr = String(selectedCaseId).toLowerCase()
+      const caseNum = targetCase ? String(targetCase.caseNumber || targetCase.id).toLowerCase() : targetCaseIdStr
+
+      const rCaseId = r.caseId ? String(r.caseId).toLowerCase() : ''
+      const rCaseNum = r.caseNumber ? String(r.caseNumber).toLowerCase() : ''
+      const rCaseIds = Array.isArray(r.caseIds) ? r.caseIds.map(id => String(id).toLowerCase()) : []
+      const defaultIds = Array.isArray(r.defaultCaseIds) ? r.defaultCaseIds.map(id => String(id).toLowerCase()) : []
+
+      if (rCaseId || rCaseNum || rCaseIds.length > 0 || defaultIds.length > 0) {
+        if (rCaseId && (rCaseId === targetCaseIdStr || rCaseId === caseNum)) return true
+        if (rCaseNum && (rCaseNum === targetCaseIdStr || rCaseNum === caseNum)) return true
+        if (rCaseIds.includes(targetCaseIdStr) || rCaseIds.includes(caseNum)) return true
+        if (defaultIds.includes(targetCaseIdStr) || defaultIds.includes(caseNum)) return true
+        return false
+      }
+
+      return true
     })
-  }, [baseRelationships, finalFilteredNodeIds])
+  }, [baseRelationships, finalFilteredNodeIds, selectedCaseId, availableCases])
 
   // Direct connected nodes for selected entity
   const connectedNodes = useMemo(() => {
