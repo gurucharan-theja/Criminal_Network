@@ -11,6 +11,7 @@ import EntityCard from '../components/EntityCard'
 import SearchBar from '../components/SearchBar'
 import useGraphStore from '../store/useGraphStore'
 import useCaseStore from '../store/useCaseStore'
+import { getRelatedCasesForEntity } from '../utils/caseCorrelation'
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
@@ -2292,6 +2293,60 @@ export default function Investigation() {
                 </span>
               </div>
             </div>
+
+            {/* Cross-Case Intelligence Match Box */}
+            {(() => {
+              const relCases = getRelatedCasesForEntity(se)
+              if (relCases.length === 0) return null
+              return (
+                <div
+                  style={{
+                    margin: '12px 0 16px',
+                    padding: '12px 14px',
+                    borderRadius: 'var(--radius-md)',
+                    background: '#FEF2F2',
+                    border: '1.5px solid #FCA5A5',
+                    textAlign: 'left'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: '0.82rem', color: '#991B1B', marginBottom: 6 }}>
+                    <FolderOpen size={14} color="#DC2626" />
+                    <span>Cross-Case Suspect Correlation ({relCases.length} {relCases.length === 1 ? 'Case' : 'Cases'})</span>
+                  </div>
+                  <div style={{ fontSize: '0.76rem', color: '#7F1D1D', marginBottom: 8 }}>
+                    Suspect identified in prior registered case dockets:
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {relCases.map(c => (
+                      <div
+                        key={c.id}
+                        onClick={() => {
+                          setCaseFilter(c.id)
+                          navigate(`/investigation?case=${c.id}`)
+                        }}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          background: '#FFFFFF',
+                          padding: '6px 10px',
+                          borderRadius: 6,
+                          border: '1px solid #FECACA',
+                          cursor: 'pointer',
+                          fontSize: '0.74rem'
+                        }}
+                        title="Click to switch to this case docket"
+                      >
+                        <strong style={{ color: '#DC2626' }}>{c.caseNumber || c.id}</strong>
+                        <span style={{ color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>
+                          {c.title}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* Investigator actions */}
             <div

@@ -7,7 +7,8 @@
  * - Biometric / Operative Avatar with risk ring
  * - Sleek metadata badges and micro-actions
  */
-import { User, MapPin, Link2, AlertTriangle, ShieldAlert, ArrowUpRight, Activity, Trash2 } from 'lucide-react'
+import { User, MapPin, Link2, AlertTriangle, ShieldAlert, ArrowUpRight, Activity, Trash2, FolderOpen } from 'lucide-react'
+import { getRelatedCasesForEntity } from '../utils/caseCorrelation'
 
 const riskConfig = {
   high:   { label: 'CRITICAL THREAT', badge: 'badge-danger',  dot: 'high',   accent: '#DC2626', bg: 'rgba(220, 38, 38, 0.04)', border: 'rgba(220, 38, 38, 0.35)' },
@@ -37,6 +38,7 @@ export default function EntityCard({ entity, onClick, onDelete, compact = false 
   const status = statusConfig[entity.status] || statusConfig.unknown
   const typeStyle = typeColors[entity.type] || typeColors.Person
   const isHighRisk = entity.risk === 'high'
+  const relatedCases = getRelatedCasesForEntity(entity)
 
   const avatarText = entity.avatar ||
     (entity.name ? entity.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() : 'ID')
@@ -245,6 +247,28 @@ export default function EntityCard({ entity, onClick, onDelete, compact = false 
           </span>
         </div>
       </div>
+
+      {/* Cross-Case Correlation Match Badge */}
+      {relatedCases.length > 0 && (
+        <div style={{
+          marginBottom: 12,
+          padding: '6px 10px',
+          borderRadius: 6,
+          background: '#FEF2F2',
+          border: '1px solid #FCA5A5',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          fontSize: '0.72rem',
+          color: '#991B1B',
+          fontWeight: 700
+        }}>
+          <FolderOpen size={13} color="#DC2626" />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            Repeat Offender: {relatedCases.length} {relatedCases.length === 1 ? 'Prior Case' : 'Prior Cases'} ({relatedCases.map(c => c.caseNumber || c.id).join(', ')})
+          </span>
+        </div>
+      )}
 
       {/* Tags & Action row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4 }}>

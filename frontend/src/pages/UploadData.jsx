@@ -21,6 +21,7 @@ import useGraphStore from '../store/useGraphStore'
 import useToast from '../hooks/useToast'
 import axiosClient from '../api/axiosClient'
 import { analyseDocument } from '../api/analysisApi'
+import { checkCrossCaseMatches } from '../utils/caseCorrelation'
 
 const ACCEPTED_TYPES = [
   '.pdf',
@@ -850,6 +851,9 @@ export default function UploadData() {
 
         financialAmount:
           financialSummary?.totalTransactionAmount || 0,
+
+        crossCaseMatches:
+          checkCrossCaseMatches(extractedEntities),
       }
 
       setResults(
@@ -1911,6 +1915,35 @@ export default function UploadData() {
                   </div>
 
                 </div>
+
+                {/* CROSS CASE MATCH ALERT */}
+                {results.crossCaseMatches && results.crossCaseMatches.length > 0 && (
+                  <div style={{
+                    marginBottom: 14,
+                    padding: 12,
+                    borderRadius: 8,
+                    background: '#FEF2F2',
+                    border: '1.5px solid #FCA5A5',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#991B1B', fontWeight: 800, fontSize: '0.82rem' }}>
+                      <AlertTriangle size={15} color="#DC2626" />
+                      <span>Cross-Case Intelligence Alert!</span>
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#7F1D1D', lineHeight: 1.4 }}>
+                      {results.crossCaseMatches.length} extracted {results.crossCaseMatches.length === 1 ? 'suspect' : 'suspects'} were identified in previous investigation dockets:
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {results.crossCaseMatches.map((m, idx) => (
+                        <div key={idx} style={{ padding: '6px 8px', background: '#FFFFFF', borderRadius: 6, border: '1px solid #FECACA', fontSize: '0.75rem' }}>
+                          <strong style={{ color: '#DC2626' }}>{m.entity.name}</strong> ({m.entity.type}) — Appears in <strong>{m.caseCount}</strong> prior {m.caseCount === 1 ? 'case' : 'cases'}: <em>{m.caseNumbers.join(', ')}</em>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* CDR */}
 
