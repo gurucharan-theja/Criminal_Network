@@ -81,7 +81,6 @@ export default function Settings() {
     { id: 'thresholds',   label: 'AI & Centrality', icon: Cpu, desc: 'Centrality & NLP detection sensitivity' },
     { id: 'security',     label: 'Compliance & TLS', icon: Lock, desc: 'Section 65B & immutable hashing' },
     { id: 'cloud',        label: 'Node Telemetry', icon: Server, desc: 'Live backend & cloud sync health' },
-    { id: 'danger',       label: 'Database Reset', icon: Trash2, desc: 'Zero-data purge & cache reset', danger: true },
   ]
 
   return (
@@ -423,43 +422,6 @@ export default function Settings() {
                   Ping Gateway
                 </button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 5: DATABASE RESET & DANGER ZONE */}
-        {activeTab === 'danger' && (
-          <div className="card anim-fade-up" style={{ display: 'flex', flexDirection: 'column', gap: 18, border: '1.5px solid #FCA5A5', background: '#FFFFFF' }}>
-            <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--danger)' }}>
-              <AlertTriangle size={15} color="var(--danger)" /> Database Purge & Evidence Clean Slate
-            </div>
-
-            <p style={{ fontSize: '0.84rem', color: '#475569', lineHeight: 1.5, margin: 0 }}>
-              This action removes all stored entities, relational graph links, extracted cases, and uploaded documents from the server database and browser local cache. Use this when transitioning from previous test investigations to <strong>ingest real, authentic police records</strong>.
-            </p>
-
-            <div style={{ background: '#FEF2F2', border: '1px solid #FEE2E2', borderRadius: 8, padding: '12px 16px', fontSize: '0.78rem', color: '#991B1B' }}>
-              <strong>Permanent Warning:</strong> This operation resets all dockets to 0 records. All future nodes will be generated exclusively from new FIR/CDR uploads.
-            </div>
-
-            <div>
-              <button
-                onClick={handlePurgeAllIntelligence}
-                className="btn"
-                style={{
-                  background: 'var(--danger)',
-                  color: '#FFFFFF',
-                  padding: '10px 20px',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  boxShadow: '0 2px 8px rgba(220, 38, 38, 0.25)',
-                }}
-              >
-                <Trash2 size={15} /> Purge All Data & Start Clean
-              </button>
             </div>
           </div>
         )}

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * EntityCard — Tactical Law Enforcement Intelligence Dossier Card
  *
  * Enhanced with:
@@ -7,7 +7,7 @@
  * - Biometric / Operative Avatar with risk ring
  * - Sleek metadata badges and micro-actions
  */
-import { User, MapPin, Link2, AlertTriangle, ShieldAlert, ArrowUpRight, Activity } from 'lucide-react'
+import { User, MapPin, Link2, AlertTriangle, ShieldAlert, ArrowUpRight, Activity, Trash2 } from 'lucide-react'
 
 const riskConfig = {
   high:   { label: 'CRITICAL THREAT', badge: 'badge-danger',  dot: 'high',   accent: '#DC2626', bg: 'rgba(220, 38, 38, 0.04)', border: 'rgba(220, 38, 38, 0.35)' },
@@ -30,7 +30,7 @@ const typeColors = {
   Phone:        { bg: 'rgba(220, 38, 38, 0.12)',  color: '#DC2626', icon: '📞' },
 }
 
-export default function EntityCard({ entity, onClick, compact = false }) {
+export default function EntityCard({ entity, onClick, onDelete, compact = false }) {
   if (!entity) return null
 
   const risk   = riskConfig[entity.risk]   || riskConfig.low
@@ -259,16 +259,44 @@ export default function EntityCard({ entity, onClick, compact = false }) {
           )}
         </div>
 
-        <span style={{
-          fontSize: '0.68rem',
-          fontWeight: 700,
-          color: isHighRisk ? '#DC2626' : 'var(--primary)',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 2
-        }}>
-          Dossier <ArrowUpRight size={11} />
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete(entity.id || entity.nodeId, entity)
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--muted)',
+                cursor: 'pointer',
+                padding: '2px 4px',
+                borderRadius: 4,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 3,
+                fontSize: '0.68rem',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#DC2626')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--muted)')}
+              title="Delete node from graph"
+            >
+              <Trash2 size={12} /> Remove
+            </button>
+          )}
+
+          <span style={{
+            fontSize: '0.68rem',
+            fontWeight: 700,
+            color: isHighRisk ? '#DC2626' : 'var(--primary)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 2
+          }}>
+            Dossier <ArrowUpRight size={11} />
+          </span>
+        </div>
       </div>
     </div>
   )

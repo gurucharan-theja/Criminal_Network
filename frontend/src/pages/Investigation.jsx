@@ -1973,6 +1973,11 @@ export default function Investigation() {
                           : e
                       )
                     }
+                    onDelete={(id) => {
+                      if (window.confirm(`Are you sure you want to remove node "${e.name || e.id}" from graph?`)) {
+                        useGraphStore.getState().removeNode(id)
+                      }
+                    }}
                   />
                 ))
               )}

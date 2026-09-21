@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import {
   BarChart2, Brain, AlertTriangle, TrendingUp,
   Network, Users, Zap, Upload, ArrowRight,
-  Download, Printer, ShieldAlert
+  Download, Printer, ShieldAlert, Trash2
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import useGraphStore from '../store/useGraphStore'
@@ -477,6 +477,7 @@ export default function Insights() {
                   <th style={{ padding: '12px 16px', color: 'blue', fontSize: '0.72rem' }}>THREAT LEVEL</th>
                   <th style={{ padding: '12px 16px', color: 'blue', fontSize: '0.72rem' }}>DEGREE CENTRALITY</th>
                   <th style={{ padding: '12px 16px', color: 'blue', fontSize: '0.72rem' }}>BETWEENNESS SCORE</th>
+                  <th style={{ padding: '12px 16px', color: 'blue', fontSize: '0.72rem', textAlign: 'right' }}>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
@@ -556,12 +557,26 @@ export default function Insights() {
                         <td style={{ padding: '12px 16px', fontFamily: 'JetBrains Mono', fontWeight: 700, color: 'var(--primary)' }}>
                           {betweennessScore} <span style={{ fontSize: '0.68rem', color: 'var(--muted)' }}>BC</span>
                         </td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                          <button
+                            className="btn btn-sm btn-ghost"
+                            onClick={() => {
+                              if (window.confirm(`Are you sure you want to remove suspect entity "${e.name || e.id}" from graph?`)) {
+                                useGraphStore.getState().removeNode(e.id)
+                              }
+                            }}
+                            title="Remove entity node from graph"
+                            style={{ color: 'var(--danger)', padding: '4px 8px' }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </td>
                       </tr>
                     )
                   })
                 ) : (
                   <tr>
-                    <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--muted)' }}>
+                    <td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: 'var(--muted)' }}>
                       No suspect influence records available. Ingest evidence files to compute degree centrality and mastermind ranks.
                     </td>
                   </tr>

@@ -1290,6 +1290,11 @@ export default function Dashboard() {
                     )}`
                   )
                 }
+                onDelete={(id) => {
+                  if (window.confirm(`Are you sure you want to remove entity "${e.name || e.id}" from graph?`)) {
+                    useGraphStore.getState().removeNode(id)
+                  }
+                }}
               />
             ))}
           </div>
