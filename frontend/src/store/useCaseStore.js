@@ -81,6 +81,11 @@ const isCaseDeleted = (c, deletedIds) => {
 };
 
 const getStoredCases = () => {
+  try {
+    if (typeof localStorage !== 'undefined' && localStorage.getItem('cni_system_cleared') === 'true') {
+      return [];
+    }
+  } catch (e) {}
   const deletedIds = getDeletedCaseIds();
   try {
     const saved = localStorage.getItem(CASES_STORAGE_KEY);
@@ -119,6 +124,13 @@ const useCaseStore = create((set, get) => ({
 
   loadCases: async () => {
     set({ loading: true, error: null });
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage.getItem('cni_system_cleared') === 'true') {
+        set({ cases: [], loading: false, stats: { total: 0, open: 0, active: 0, onHold: 0, closed: 0 } });
+        return;
+      }
+    } catch (e) {}
+
     const deletedIds = getDeletedCaseIds();
     const saved = localStorage.getItem(CASES_STORAGE_KEY);
 

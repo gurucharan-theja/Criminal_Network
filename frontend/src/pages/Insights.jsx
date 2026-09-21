@@ -464,7 +464,7 @@ export default function Insights() {
       <div>
         <div className="section-label" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
           <TrendingUp size={14} color="var(--primary)" />
-          <span>Key Influencer Detection & Centrality Analysis (SIH 26189 Mandate)</span>
+          <span>Key Influencer Detection & Centrality Analysis</span>
         </div>
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div className="table-wrap">

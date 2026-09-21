@@ -8,6 +8,9 @@ const STORAGE_KEY_LINKS = 'cni_graph_links'
 
 const getCachedNodes = () => {
   try {
+    if (localStorage.getItem('cni_system_cleared') === 'true' || localStorage.getItem('cni_graph_cleared') === 'true') {
+      return []
+    }
     const saved = localStorage.getItem(STORAGE_KEY_NODES)
     return saved ? JSON.parse(saved) : []
   } catch {
@@ -17,6 +20,9 @@ const getCachedNodes = () => {
 
 const getCachedLinks = () => {
   try {
+    if (localStorage.getItem('cni_system_cleared') === 'true' || localStorage.getItem('cni_graph_cleared') === 'true') {
+      return []
+    }
     const saved = localStorage.getItem(STORAGE_KEY_LINKS)
     return saved ? JSON.parse(saved) : []
   } catch {
@@ -55,7 +61,7 @@ const useGraphStore = create((set, get) => ({
 
     // Check if user explicitly cleared the graph
     try {
-      if (localStorage.getItem('cni_graph_cleared') === 'true') {
+      if (localStorage.getItem('cni_graph_cleared') === 'true' || localStorage.getItem('cni_system_cleared') === 'true') {
         set({ nodes: [], links: [], loading: false })
         return
       }
@@ -127,6 +133,7 @@ const useGraphStore = create((set, get) => ({
   mergeExtractionResult: (result) => {
     try {
       localStorage.removeItem('cni_graph_cleared')
+      localStorage.removeItem('cni_system_cleared')
     } catch {}
     const { nodes, links } = get()
     const existingIds = new Set(nodes.map(n => String(n.id)))
@@ -228,9 +235,15 @@ const useGraphStore = create((set, get) => ({
       console.warn('Backend reset API call failed', e)
     }
     try {
+      localStorage.setItem('cni_system_cleared', 'true')
+      localStorage.setItem('cni_graph_cleared', 'true')
       localStorage.setItem(STORAGE_KEY_NODES, JSON.stringify([]))
       localStorage.setItem(STORAGE_KEY_LINKS, JSON.stringify([]))
-      localStorage.setItem('cni_graph_cleared', 'true')
+      localStorage.setItem('crime_net_saved_cases', JSON.stringify([]))
+      localStorage.setItem('crime_net_cdr_records', JSON.stringify([]))
+      localStorage.setItem('crime_net_blockchain_blocks', JSON.stringify([]))
+      localStorage.setItem('crime_net_blockchain_wallets', JSON.stringify([]))
+      localStorage.setItem('crime_net_deleted_case_ids', JSON.stringify([]))
     } catch {}
     set({ nodes: [], links: [], selectedNodeId: null, error: null })
     if (typeof window !== 'undefined') {

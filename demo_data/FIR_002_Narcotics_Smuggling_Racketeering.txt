@@ -1,0 +1,39 @@
+FIRST INFORMATION REPORT (U/S 154 Cr.P.C.)
+--------------------------------------------------------------------------------
+Police Station: Anti-Narcotics Task Force (ANTF)
+FIR No: 0289/2026
+Date & Time of Incident: 02-Mar-2026 03:15 AM
+Date of Ingestion: 21-Sep-2026
+Sections: Sec 8, 21, 29 NDPS Act & Sec 120-B IPC
+
+SUBJECT / COMPLAINT DETAILS:
+Interception of cross-border narcotics trafficking network operating between Punjab, Rajasthan, and Gujarat ports.
+
+ACCUSED & SUSPECT DETAILS:
+1. Accused: Harpreet Singh (Alias: "Happy Paaji")
+   Role: Kingpin & Logistics Head
+   Phone: +91 9988776655
+   Vehicle: PB-08-AX-9999 (Container Truck)
+   Location: Amritsar, Punjab
+
+2. Suspect: Devendra Rathore (Alias: "Devu Carrier")
+   Role: Transport Driver & Border Handler
+   Phone: +91 9765432109
+   Location: Jodhpur, Rajasthan
+
+3. Financier: Suresh Chand (Alias: "Sethji")
+   Role: Hawala Financier
+   Account: 554433221100 (SBI Commercial Bank)
+   Phone: +91 9833445566
+   Location: Ahmedabad, Gujarat
+
+INCIDENT SUMMARY & INVESTIGATION FINDINGS:
+Special Narcotics Team intercepted container truck PB-08-AX-9999 near the border checkpoint. The driver Devendra Rathore disclosed that Kingpin Harpreet Singh (+91 9988776655) coordinated the shipment via encrypted phone calls.
+
+Payment of INR 1.2 Crore was cleared by Hawala Financier Suresh Chand (+91 9833445566) into SBI account 554433221100. Call detail records show 84 interactions between Harpreet Singh and Devendra Rathore during transit.
+
+EVIDENCE ATTACHMENTS:
+- Seizure Memo & Chemical Test Report
+- CDR Tower Dump Analytics (Amritsar-Jodhpur corridor)
+- Financial Transaction Statements
+--------------------------------------------------------------------------------

@@ -1,0 +1,43 @@
+FIRST INFORMATION REPORT (U/S 154 Cr.P.C.)
+--------------------------------------------------------------------------------
+Police Station: Cyber Crime Cell, Special Branch
+FIR No: 0142/2026
+Date & Time of Incident: 14-Feb-2026 11:30 AM
+Date of Ingestion: 21-Sep-2026
+Sections: Sec 420, 120-B IPC & Sec 66D IT Act
+
+SUBJECT / COMPLAINT DETAILS:
+Investigation into inter-state phishing and online banking syndicate operating across New Delhi, Cyberabad, and Mumbai.
+
+ACCUSED & SUSPECT DETAILS:
+1. Accused: Vikramaditya Sharma (Alias: "Vicky Mastermind")
+   Role: Syndicate Kingpin & Mastermind
+   Phone: +91 9876543210
+   Vehicle: MH-02-CD-5678 (Black Fortuner)
+   Address: Sector 44, Gurgaon, Haryana
+
+2. Suspect: Rajesh Verma (Alias: "Raju Operator")
+   Role: Call Center Supervisor & Tech Lead
+   Phone: +91 9811223344
+   Location: Connaught Place, New Delhi
+
+3. Financier: Amit Singhania
+   Role: Money Laundering & Hawala Agent
+   Account: 918273645019 (HDFC Bank)
+   Phone: +91 9822334455
+
+4. Associate: Priya Nair (Alias: "SIM Vendor")
+   Role: Fake Identity SIM Card Provider
+   Phone: +91 9899887766
+   Location: Malad West, Mumbai
+
+INCIDENT SUMMARY & INVESTIGATION FINDINGS:
+On 14-Feb-2026, the primary accused Vikramaditya Sharma established a clandestine call center in Connaught Place. Intercepted communications reveal frequent calls between Vikramaditya Sharma (+91 9876543210) and Rajesh Verma (+91 9811223344). 
+
+Financial traces show funds totaling INR 45,00,000 transferred to account 918273645019 managed by financier Amit Singhania. Fake identity SIM cards were procured from SIM vendor Priya Nair (+91 9899887766).
+
+EVIDENCE ATTACHMENTS:
+- Intercepted Call Logs (CDR Records)
+- Bank Statement Transcripts (HDFC Account 918273645019)
+- Vehicle Tracking Log (MH-02-CD-5678)
+--------------------------------------------------------------------------------

@@ -70,9 +70,27 @@ export default function Settings() {
       try {
         await axiosClient.post('/cases/reset')
       } catch (e) {}
-      localStorage.clear()
+
+      try {
+        localStorage.setItem('cni_system_cleared', 'true')
+        localStorage.setItem('cni_graph_cleared', 'true')
+        localStorage.setItem('crime_net_saved_cases', JSON.stringify([]))
+        localStorage.setItem('cni_graph_nodes', JSON.stringify([]))
+        localStorage.setItem('cni_graph_links', JSON.stringify([]))
+        localStorage.setItem('crime_net_cdr_records', JSON.stringify([]))
+        localStorage.setItem('crime_net_blockchain_blocks', JSON.stringify([]))
+        localStorage.setItem('crime_net_blockchain_wallets', JSON.stringify([]))
+        localStorage.setItem('crime_net_deleted_case_ids', JSON.stringify([]))
+      } catch (e) {}
+
       useCaseStore.setState({ cases: [], stats: { total: 0, open: 0, active: 0, onHold: 0, closed: 0 } })
-      toast.success('System reset: All cases, network graphs, CDR telemetry, and blockchain audit blocks purged!')
+      useGraphStore.setState({ nodes: [], links: [], selectedNodeId: null })
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('crime_net_data_changed'))
+      }
+
+      toast.success('System reset: All cases, network graphs, CDR telemetry, and blockchain audit blocks purged to zero!')
     }
   }
 
@@ -81,6 +99,7 @@ export default function Settings() {
     { id: 'thresholds',   label: 'AI & Centrality', icon: Cpu, desc: 'Centrality & NLP detection sensitivity' },
     { id: 'security',     label: 'Compliance & TLS', icon: Lock, desc: 'Section 65B & immutable hashing' },
     { id: 'cloud',        label: 'Node Telemetry', icon: Server, desc: 'Live backend & cloud sync health' },
+    { id: 'reset',        label: 'Delete All Data', icon: Trash2, desc: 'Purge repository to clean zero state', danger: true },
   ]
 
   return (
@@ -422,6 +441,47 @@ export default function Settings() {
                   Ping Gateway
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab 5: Reset / Delete All Data ──────────────────────── */}
+        {activeTab === 'reset' && (
+          <div className="card anim-fade-up" style={{ padding: 24, border: '1.5px solid rgba(220, 38, 38, 0.4)', background: 'rgba(220, 38, 38, 0.02)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--danger)' }}>
+              <AlertTriangle size={22} />
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Purge All Intelligence Data & Reset Every Page to Zero</h3>
+            </div>
+
+            <p style={{ color: 'var(--text)', fontSize: '0.88rem', lineHeight: 1.6, margin: 0 }}>
+              Executing this action will permanently clear all stored cases, suspect entity nodes, network links, CDR call detail records, and blockchain audit blocks across all pages. <strong>No demo data will be re-populated automatically.</strong> Every page will remain completely empty until new evidence is uploaded or ingested.
+            </p>
+
+            <div style={{ padding: '12px 16px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FCA5A5', fontSize: '0.82rem', color: '#991B1B' }}>
+              <strong>Evidentiary Notice:</strong> All pages (Dashboard, Investigation, Cases, Network Analysis, CDR Analytics, Blockchain Audit, Insights, Reports) will show zero (0) count metrics.
+            </div>
+
+            <div>
+              <button
+                onClick={handlePurgeAllIntelligence}
+                className="btn"
+                style={{
+                  background: 'var(--danger)',
+                  color: '#FFFFFF',
+                  fontWeight: 700,
+                  fontSize: '0.86rem',
+                  padding: '11px 22px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  border: 'none',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(220, 38, 38, 0.25)'
+                }}
+              >
+                <Trash2 size={16} /> Delete All Data & Reset Every Page to Zero
+              </button>
             </div>
           </div>
         )}
