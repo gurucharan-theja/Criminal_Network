@@ -66,6 +66,13 @@ export default function NetworkGraph({
 
   // Process data for D3 force simulation
   const getGraphData = useCallback(() => {
+    const currentIds = new Set(nodes.map(n => String(n.id || n.nodeId)))
+    for (const key of nodesMapRef.current.keys()) {
+      if (!currentIds.has(key)) {
+        nodesMapRef.current.delete(key)
+      }
+    }
+
     const processedNodes = nodes.map(n => {
       const id = String(n.id || n.nodeId)
       const existing = nodesMapRef.current.get(id)
@@ -122,6 +129,9 @@ export default function NetworkGraph({
   useEffect(() => {
     if (!containerRef.current || !svgRef.current) return
 
+    const svg = d3.select(svgRef.current)
+    svg.selectAll('*').remove()
+
     const { nodes: graphNodes, links: graphLinks } = getGraphData()
     if (graphNodes.length === 0) return
 
@@ -130,9 +140,6 @@ export default function NetworkGraph({
     const heightPx = container.clientHeight || 600
     const cx = widthPx / 2
     const cy = heightPx / 2
-
-    const svg = d3.select(svgRef.current)
-    svg.selectAll('*').remove()
 
     const defs = svg.append('defs')
 

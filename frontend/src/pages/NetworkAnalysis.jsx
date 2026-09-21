@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react'
+﻿import React, { useEffect, useState, useMemo } from 'react'
 import {
   Network, Search, Filter, RefreshCw, ShieldAlert,
   Users, ArrowUpRight, Info, HelpCircle, Layers, CheckCircle2,
@@ -399,7 +399,6 @@ export default function NetworkAnalysis() {
               </span>
               {[
                 { id: 'all',        label: '🌐 All Data',           color: '#2563EB' },
-                { id: 'case',       label: '📁 Case Dockets',       color: '#7C3AED' },
                 { id: 'evidence',   label: '📄 Document Evidence', color: '#16A34A' },
                 { id: 'blockchain', label: '⛓️ Blockchain Audit',  color: '#D97706' },
                 { id: 'cdr',        label: '📞 CDR Telecom',       color: '#DC2626' },
