@@ -571,22 +571,26 @@ export default function UploadData() {
           )
 
           // ---------------------------------------------------
-          // Enhanced Person Entity Extraction (Contextual NLP Engine)
+          // Strict Person Entity Extraction Engine
           // ---------------------------------------------------
 
-          const NON_PERSON_STOPWORDS = new Set([
-            'Police Station', 'Police Department', 'Crime Branch', 'Special Cell',
-            'State Bank', 'High Court', 'District Court', 'Indian Penal',
-            'Code Section', 'Public Notice', 'Union Territory', 'Apex Logistics',
-            'Reserve Bank', 'Telecom Network', 'Call Detail', 'Seizure Memo',
-            'First Information', 'Charge Sheet', 'Judicial Custody'
+          const NON_PERSON_WORDS = new Set([
+            'police', 'station', 'report', 'section', 'court', 'state', 'bank', 'public', 'notice',
+            'information', 'charge', 'sheet', 'union', 'territory', 'call', 'detail', 'record', 'tower',
+            'dump', 'mobile', 'number', 'account', 'vehicle', 'motor', 'car', 'truck', 'location', 'city',
+            'district', 'high', 'supreme', 'law', 'order', 'special', 'cell', 'bureau', 'department',
+            'division', 'unit', 'hawala', 'syndicate', 'logistics', 'operations', 'national', 'central',
+            'regional', 'international', 'financial', 'transaction', 'evidence', 'document', 'case', 'file',
+            'docket', 'memo', 'fir', 'general', 'diary', 'branch', 'sub', 'inspector', 'assistant',
+            'superintendent', 'commissioner', 'headquarters', 'hq', 'wing', 'range', 'zone', 'squad',
+            'accused', 'suspect', 'witness', 'complainant', 'informant', 'officer', 'shri', 'smt', 'mr',
+            'mrs', 'dr', 'alias', 'gangster', 'don', 'bhai', 'kingpin', 'mastermind', 'operative', 'financier'
           ])
 
           const personPatterns = [
-            /\b(?:Shri|Smt|Mr\.?|Mrs\.?|Dr\.?|Accused|Suspect|Alias|Gangster|Don|Bhai|Kingpin|Mastermind|Operative|Financier|Courier|Handler|Officer|Inspector)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b/g,
+            /\b(?:Shri|Smt|Mr\.?|Mrs\.?|Ms\.?|Dr\.?|Accused|Suspect|Alias|Gangster|Don|Bhai|Kingpin|Mastermind|Operative|Financier|Courier|Handler|Officer|Inspector)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b/g,
             /\b([A-Z][a-z]+\s+[A-Z][a-z]+)\s+(?:alias|@)\s+([A-Z][a-zA-Z0-9]+)\b/gi,
-            /\b(?:named|identified as|arrested|interrogated|handler|mule|courier|operates|contacted|suspect)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)\b/gi,
-            /\b([A-Z][a-z]{2,15}\s+[A-Z][a-z]{2,15})\b/g,
+            /\b(?:named|identified as|arrested|interrogated|handler|mule|courier|operates|contacted)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)\b/gi,
           ]
 
           const ROLE_RULES = [
@@ -603,28 +607,12 @@ export default function UploadData() {
             let match
             while ((match = pattern.exec(text)) !== null) {
               const matchedName = (match[1] || match[0]).trim()
+              const words = matchedName.split(/\s+/).map((w) => w.toLowerCase())
               if (
                 matchedName.length >= 4 &&
-                !NON_PERSON_STOPWORDS.has(matchedName) &&
-                !matchedName.toLowerCase().includes('section') &&
-                !matchedName.toLowerCase().includes('court') &&
-                !matchedName.toLowerCase().includes('station')
+                !words.some((w) => NON_PERSON_WORDS.has(w))
               ) {
                 extractedPersonNames.add(matchedName)
-              }
-            }
-          })
-
-          const textLines = text.split('\n')
-          textLines.forEach((line) => {
-            if (/accused|suspect|alias|convoy|operator|kingpin|financier/i.test(line)) {
-              const cleaned = line.replace(/[^a-zA-Z0-9\s]/g, ' ').trim()
-              const words = cleaned.split(/\s+/).filter((w) => w.length > 2)
-              if (words.length >= 2) {
-                const candidateName = words.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
-                if (!NON_PERSON_STOPWORDS.has(candidateName) && candidateName.length >= 5) {
-                  extractedPersonNames.add(candidateName)
-                }
               }
             }
           })
@@ -660,41 +648,75 @@ export default function UploadData() {
           })
 
           // ---------------------------------------------------
-          // Fallback relations
+          // Contextual Relationship Link Extraction (Person Links)
           // ---------------------------------------------------
 
-          if (
-            extractedEntities.length > 1
-          ) {
+          const personEntities = extractedEntities.filter((e) => e.type === 'Person')
+          const phoneEntities = extractedEntities.filter((e) => e.type === 'Phone')
+          const vehicleEntities = extractedEntities.filter((e) => e.type === 'Vehicle')
+          const accountEntities = extractedEntities.filter((e) => e.type === 'Account')
 
-            for (
-              let i = 0;
-              i <
-                extractedEntities.length - 1;
-              i++
-            ) {
+          let relCounter = 1
 
+          // 1. Person <-> Person (Associate Links)
+          for (let i = 0; i < personEntities.length; i++) {
+            for (let j = i + 1; j < personEntities.length; j++) {
               extractedRelations.push({
-
-                id:
-                  `rel-${Date.now()}-${i}`,
-
-                source:
-                  extractedEntities[i]
-                    .id,
-
-                target:
-                  extractedEntities[i + 1]
-                    .id,
-
-                type:
-                  'communication',
-
-                sourceFile:
-                  f.name
+                id: `rel-p2p-${Date.now()}-${relCounter++}`,
+                source: personEntities[i].id,
+                target: personEntities[j].id,
+                type: 'ASSOCIATE',
+                weight: 4,
+                sourceFile: f.name,
+                description: `Syndicate associate link between ${personEntities[i].name} and ${personEntities[j].name}`
               })
             }
           }
+
+          // 2. Person <-> Phone (Telecom Intercept Links)
+          personEntities.forEach((p) => {
+            phoneEntities.forEach((ph) => {
+              extractedRelations.push({
+                id: `rel-p2ph-${Date.now()}-${relCounter++}`,
+                source: p.id,
+                target: ph.id,
+                type: 'FREQUENT_CALL',
+                weight: 3,
+                sourceFile: f.name,
+                description: `${p.name} associated with phone endpoint ${ph.name}`
+              })
+            })
+          })
+
+          // 3. Person <-> Vehicle (Transport Vehicle Links)
+          personEntities.forEach((p) => {
+            vehicleEntities.forEach((v) => {
+              extractedRelations.push({
+                id: `rel-p2v-${Date.now()}-${relCounter++}`,
+                source: p.id,
+                target: v.id,
+                type: 'REGISTERED_TO',
+                weight: 2,
+                sourceFile: f.name,
+                description: `${p.name} associated with transport vehicle ${v.name}`
+              })
+            })
+          })
+
+          // 4. Person <-> Account (Financial Conduit Links)
+          personEntities.forEach((p) => {
+            accountEntities.forEach((acc) => {
+              extractedRelations.push({
+                id: `rel-p2a-${Date.now()}-${relCounter++}`,
+                source: p.id,
+                target: acc.id,
+                type: 'FINANCIAL_TX',
+                weight: 5,
+                sourceFile: f.name,
+                description: `${p.name} financial transfer connection to account ${acc.name}`
+              })
+            })
+          })
         }
       }
 

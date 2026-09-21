@@ -98,19 +98,23 @@ def extract_entities(text: str, filename: str = "document") -> List[Dict[str, An
             })
 
     # 4. Extract Persons & Suspect Names with Role Inference
-    NON_PERSON_STOPWORDS = {
-        "Police Station", "Police Department", "Crime Branch", "Special Cell",
-        "State Bank", "High Court", "District Court", "Indian Penal",
-        "Code Section", "Public Notice", "Union Territory", "Apex Logistics",
-        "Reserve Bank", "Telecom Network", "Call Detail", "Seizure Memo",
-        "First Information", "Charge Sheet", "Judicial Custody"
+    NON_PERSON_WORDS = {
+        "police", "station", "report", "section", "court", "state", "bank", "public", "notice",
+        "information", "charge", "sheet", "union", "territory", "call", "detail", "record", "tower",
+        "dump", "mobile", "number", "account", "vehicle", "motor", "car", "truck", "location", "city",
+        "district", "high", "supreme", "law", "order", "special", "cell", "bureau", "department",
+        "division", "unit", "hawala", "syndicate", "logistics", "operations", "national", "central",
+        "regional", "international", "financial", "transaction", "evidence", "document", "case", "file",
+        "docket", "memo", "fir", "general", "diary", "branch", "sub", "inspector", "assistant",
+        "superintendent", "commissioner", "headquarters", "hq", "wing", "range", "zone", "squad",
+        "accused", "suspect", "witness", "complainant", "informant", "officer", "shri", "smt", "mr",
+        "mrs", "dr", "alias", "gangster", "don", "bhai", "kingpin", "mastermind", "operative", "financier"
     }
 
     person_patterns = [
-        re.compile(r'\b(?:Shri|Smt|Mr\.?|Mrs\.?|Dr\.?|Accused|Suspect|Alias|Gangster|Don|Bhai|Kingpin|Mastermind|Operative|Financier|Courier|Handler|Officer|Inspector)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b'),
+        re.compile(r'\b(?:Shri|Smt|Mr\.?|Mrs\.?|Ms\.?|Dr\.?|Accused|Suspect|Alias|Gangster|Don|Bhai|Kingpin|Mastermind|Operative|Financier|Courier|Handler|Officer|Inspector)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b'),
         re.compile(r'\b([A-Z][a-z]+\s+[A-Z][a-z]+)\s+(?:alias|@)\s+([A-Z][a-zA-Z0-9]+)\b', re.IGNORECASE),
         re.compile(r'\b(?:named|identified as|arrested|interrogated|handler|mule|courier|operates|contacted)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)\b', re.IGNORECASE),
-        re.compile(r'\b([A-Z][a-z]{2,15}\s+[A-Z][a-z]{2,15}(?:\s+[A-Z][a-z]{2,15})?)\b'),
     ]
 
     suspect_names = set()
@@ -120,11 +124,13 @@ def extract_entities(text: str, filename: str = "document") -> List[Dict[str, An
             if isinstance(m, tuple):
                 for sub in m:
                     candidate = sub.strip()
-                    if candidate and candidate not in NON_PERSON_STOPWORDS and len(candidate) >= 4:
+                    words = [w.lower() for w in candidate.split()]
+                    if candidate and len(candidate) >= 4 and not any(w in NON_PERSON_WORDS for w in words):
                         suspect_names.add(candidate)
             else:
                 candidate = m.strip()
-                if candidate and candidate not in NON_PERSON_STOPWORDS and len(candidate) >= 4:
+                words = [w.lower() for w in candidate.split()]
+                if candidate and len(candidate) >= 4 and not any(w in NON_PERSON_WORDS for w in words):
                     suspect_names.add(candidate)
 
     for name in suspect_names:
