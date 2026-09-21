@@ -677,6 +677,56 @@ const useNetworkStore = create((set, get) => ({
     },
 
   // ---------------------------------------------------------------------------
+  // REMOVE ENTITY & CLEAR NETWORK ACTIONS
+  // ---------------------------------------------------------------------------
+
+  removeEntity: (nodeId) => {
+    const sId = String(nodeId);
+    const { entities, relationships } = get();
+
+    const updatedEntities = entities.filter(e => String(e.id || e.nodeId) !== sId);
+    const updatedRelationships = relationships.filter(r => {
+      const src = String(typeof r.source === 'object' ? r.source.id : r.source);
+      const tgt = String(typeof r.target === 'object' ? r.target.id : r.target);
+      return src !== sId && tgt !== sId;
+    });
+
+    try {
+      localStorage.setItem('cni_graph_nodes', JSON.stringify(updatedEntities));
+      localStorage.setItem('cni_graph_links', JSON.stringify(updatedRelationships));
+    } catch (e) {}
+
+    set({
+      entities: updatedEntities,
+      relationships: updatedRelationships,
+      selectedNodeId: null,
+    });
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crime_net_data_changed'));
+    }
+  },
+
+  clearNetwork: () => {
+    try {
+      localStorage.setItem('cni_graph_nodes', JSON.stringify([]));
+      localStorage.setItem('cni_graph_links', JSON.stringify([]));
+      localStorage.setItem('cni_graph_cleared', 'true');
+    } catch (e) {}
+
+    set({
+      entities: [],
+      relationships: [],
+      selectedNodeId: null,
+      error: null,
+    });
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crime_net_data_changed'));
+    }
+  },
+
+  // ---------------------------------------------------------------------------
   // CLEAR ERROR
   // ---------------------------------------------------------------------------
 
@@ -685,5 +735,11 @@ const useNetworkStore = create((set, get) => ({
       error: null,
     }),
 }));
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('crime_net_data_changed', () => {
+    useNetworkStore.getState().fetchNetwork();
+  });
+}
 
 export default useNetworkStore;

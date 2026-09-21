@@ -2,10 +2,12 @@ import React, { useEffect, useState, useMemo } from 'react'
 import {
   Network, Search, Filter, RefreshCw, ShieldAlert,
   Users, ArrowUpRight, Info, HelpCircle, Layers, CheckCircle2,
-  GitBranch, Target, Zap, ChevronRight
+  GitBranch, Target, Zap, ChevronRight, Trash2
 } from 'lucide-react'
 import NetworkGraph from '../graph/NetworkGraph'
 import useNetworkStore from '../store/useNetworkStore'
+import useGraphStore from '../store/useGraphStore'
+import useToast from '../hooks/useToast'
 
 // Demo network dataset if database backend is clean
 const DEMO_ENTITIES = [
@@ -33,6 +35,7 @@ const DEMO_RELATIONSHIPS = [
 ]
 
 export default function NetworkAnalysis() {
+  const toast = useToast()
   const {
     entities: storeEntities,
     relationships: storeRelationships,
@@ -40,12 +43,32 @@ export default function NetworkAnalysis() {
     fetchNetwork,
     selectedNodeId,
     selectNode,
+    removeEntity,
+    clearNetwork,
   } = useNetworkStore()
 
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedType, setSelectedType] = useState('ALL')
   const [degreeMode, setDegreeMode] = useState('all') // 'all', '1-hop', '2-hop'
   const [showGuide, setShowGuide] = useState(false)
+
+  const handleRemoveSingleEntity = (node) => {
+    if (!node) return
+    const name = node.name || node.label || 'Entity'
+    if (window.confirm(`Are you sure you want to remove target entity "${name}" from the network graph? All associated relationship links will also be removed.`)) {
+      useGraphStore.getState().removeNode(node.id || node.nodeId)
+      removeEntity(node.id || node.nodeId)
+      toast.success(`Entity "${name}" removed from graph`)
+    }
+  }
+
+  const handleClearAllNetworkData = () => {
+    if (window.confirm('⚠️ Are you sure you want to clear all network graph entities and relationships? This will reset the graph workspace to empty.')) {
+      useGraphStore.getState().resetGraph()
+      clearNetwork()
+      toast.success('Network graph data cleared')
+    }
+  }
 
   // Fetch from store on load
   useEffect(() => {
@@ -200,6 +223,20 @@ export default function NetworkAnalysis() {
           >
             <RefreshCw size={14} className={loading ? 'spin' : ''} />
             <span>Sync Network Data</span>
+          </button>
+
+          <button
+            onClick={handleClearAllNetworkData}
+            style={{
+              ...actionBtnStyle,
+              background: '#FEF2F2',
+              borderColor: '#FCA5A5',
+              color: '#DC2626'
+            }}
+            title="Clear all network nodes and relationships"
+          >
+            <Trash2 size={14} />
+            <span>Clear Graph Data</span>
           </button>
         </div>
       </div>
@@ -574,7 +611,7 @@ export default function NetworkAnalysis() {
                 </span>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
                 {connectedNodes.length === 0 ? (
                   <div style={{ fontSize: '0.82rem', color: '#94A3B8', textAlign: 'center', padding: 12 }}>
                     No immediate connections found
@@ -583,7 +620,6 @@ export default function NetworkAnalysis() {
                   connectedNodes.map(conn => (
                     <div
                       key={conn.id || conn.nodeId}
-                      onClick={() => selectNode(conn.id || conn.nodeId)}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -592,11 +628,13 @@ export default function NetworkAnalysis() {
                         borderRadius: 6,
                         background: '#F8FAFC',
                         border: '1px solid #E2E8F0',
-                        cursor: 'pointer',
                         transition: 'background 0.15s ease'
                       }}
                     >
-                      <div>
+                      <div
+                        onClick={() => selectNode(conn.id || conn.nodeId)}
+                        style={{ cursor: 'pointer', flex: 1 }}
+                      >
                         <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1E293B' }}>
                           {conn.name || conn.label}
                         </div>
@@ -604,12 +642,60 @@ export default function NetworkAnalysis() {
                           {conn.type}
                         </div>
                       </div>
-                      <ArrowUpRight size={14} style={{ color: '#94A3B8' }} />
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleRemoveSingleEntity(conn)
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#94A3B8',
+                            cursor: 'pointer',
+                            padding: 2,
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.color = '#DC2626')}
+                          onMouseLeave={(e) => (e.currentTarget.style.color = '#94A3B8')}
+                          title="Remove entity from graph"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+
+                        <ArrowUpRight size={14} style={{ color: '#94A3B8', cursor: 'pointer' }} onClick={() => selectNode(conn.id || conn.nodeId)} />
+                      </div>
                     </div>
                   ))
                 )}
               </div>
             </div>
+
+            {/* Target Entity Node Removal Button */}
+            <button
+              onClick={() => handleRemoveSingleEntity(activeSelectedNode)}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: 8,
+                background: '#FEF2F2',
+                border: '1px solid #FCA5A5',
+                color: '#DC2626',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                marginTop: 4
+              }}
+            >
+              <Trash2 size={15} />
+              Remove Target Node & Edges
+            </button>
           </div>
         )}
       </div>
