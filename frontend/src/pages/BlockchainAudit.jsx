@@ -17,7 +17,8 @@ import {
   Plus,
   Upload,
   X,
-  FileText
+  FileText,
+  Trash2
 } from 'lucide-react'
 import useToast from '../hooks/useToast'
 import useCaseStore from '../store/useCaseStore'
@@ -281,23 +282,25 @@ export default function BlockchainAudit() {
       String(b.evidenceCommitted || '').toLowerCase().includes(q) ||
       String(b.blockHash || '').toLowerCase().includes(q) ||
       String(b.validatorNode || '').toLowerCase().includes(q) ||
-      b.officerBadge.toLowerCase().includes(q)
+      String(b.officerBadge || '').toLowerCase().includes(q)
     )
   })
 
   const filteredWallets = wallets.filter(w => {
-    const q = searchQuery.toLowerCase()
+    const q = searchQuery.toLowerCase().trim()
     return (
-      w.address.toLowerCase().includes(q) ||
-      w.ownerAlias.toLowerCase().includes(q) ||
-      w.cryptocurrency.toLowerCase().includes(q) ||
-      w.darknetTies.toLowerCase().includes(q)
+      !q ||
+      String(w.address || '').toLowerCase().includes(q) ||
+      String(w.ownerAlias || '').toLowerCase().includes(q) ||
+      String(w.cryptocurrency || '').toLowerCase().includes(q) ||
+      String(w.darknetTies || '').toLowerCase().includes(q)
     )
   })
 
   // Calculate total crypto sum from wallets
   const totalCryptoUSD = wallets.reduce((acc, w) => {
-    const num = parseFloat(w.balanceUSD.replace(/[^0-9.-]+/g, '')) || 0
+    const balanceStr = String(w?.balanceUSD || '0')
+    const num = parseFloat(balanceStr.replace(/[^0-9.-]+/g, '')) || 0
     return acc + num
   }, 0)
 
