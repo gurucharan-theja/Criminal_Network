@@ -52,9 +52,10 @@ export default function NetworkAnalysis() {
     fetchNetwork()
   }, [fetchNetwork])
 
-  // Determine base dataset (Store or Demo fallback)
-  const baseEntities = storeEntities.length > 0 ? storeEntities : DEMO_ENTITIES
-  const baseRelationships = storeRelationships.length > 0 ? storeRelationships : DEMO_RELATIONSHIPS
+  // Determine base dataset (Store or Demo fallback, respecting explicit deletions)
+  const isGraphCleared = typeof localStorage !== 'undefined' && localStorage.getItem('cni_graph_cleared') === 'true'
+  const baseEntities = isGraphCleared ? storeEntities : (storeEntities.length > 0 ? storeEntities : DEMO_ENTITIES)
+  const baseRelationships = isGraphCleared ? storeRelationships : (storeRelationships.length > 0 ? storeRelationships : DEMO_RELATIONSHIPS)
 
   // Active selected entity object
   const activeSelectedNode = useMemo(() => {

@@ -141,7 +141,7 @@ export default function BlockchainAudit() {
   useEffect(() => {
     const generateCaseBlocks = async () => {
       const savedBlocks = localStorage.getItem(BLOCKS_STORAGE_KEY)
-      if (savedBlocks && savedBlocks !== '[]') return // Already loaded from localStorage
+      if (savedBlocks !== null) return // Respect saved blocks state (including empty array when cleared)
 
       if (cases && cases.length > 0 && blocks.length === 0) {
         let prevHash = '0x0000000000000000000000000000000000000000000000000000000000000000'

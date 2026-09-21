@@ -168,16 +168,44 @@ const useNetworkStore = create((set, get) => ({
     });
 
     try {
+      if (typeof localStorage !== 'undefined' && localStorage.getItem('cni_graph_cleared') === 'true') {
+        set({ entities: [], relationships: [], loading: false, error: null });
+        return;
+      }
+    } catch (e) {}
+
+    try {
       const graph = await getGraph();
+      let entities = Array.isArray(graph?.nodes) ? graph.nodes : [];
+      let relationships = Array.isArray(graph?.links) ? graph.links : [];
 
-      const entities = Array.isArray(graph?.nodes)
-        ? graph.nodes
-        : [];
-
-      const relationships =
-        Array.isArray(graph?.links)
-          ? graph.links
-          : [];
+      // Merge with cached graph nodes from localStorage if any
+      try {
+        const rawN = localStorage.getItem('cni_graph_nodes');
+        const rawL = localStorage.getItem('cni_graph_links');
+        if (rawN) {
+          const cachedN = JSON.parse(rawN);
+          if (Array.isArray(cachedN)) {
+            const mapN = new Map();
+            [...entities, ...cachedN].forEach(n => { if (n && n.id) mapN.set(String(n.id), n); });
+            entities = Array.from(mapN.values());
+          }
+        }
+        if (rawL) {
+          const cachedL = JSON.parse(rawL);
+          if (Array.isArray(cachedL)) {
+            const mapL = new Map();
+            [...relationships, ...cachedL].forEach(l => {
+              if (l) {
+                const s = typeof l.source === 'object' ? l.source.id : l.source;
+                const t = typeof l.target === 'object' ? l.target.id : l.target;
+                mapL.set(`${s}->${t}:${l.type || ''}`, l);
+              }
+            });
+            relationships = Array.from(mapL.values());
+          }
+        }
+      } catch (e) {}
 
       set({
         entities,
@@ -186,32 +214,21 @@ const useNetworkStore = create((set, get) => ({
         error: null,
       });
 
-      // Recalculate degree analysis if an entity
-      // was already selected.
-      const {
-        selectedNodeId,
-        degreeMode,
-      } = get();
-
-      if (
-        selectedNodeId != null &&
-        degreeMode !== "all"
-      ) {
-        get().analyzeDegrees(
-          selectedNodeId,
-          degreeMode
-        );
+      const { selectedNodeId, degreeMode } = get();
+      if (selectedNodeId != null && degreeMode !== "all") {
+        get().analyzeDegrees(selectedNodeId, degreeMode);
       }
     } catch (error) {
-      console.warn(
-        "Backend graph API unavailable, using offline syndicate graph:",
-        error?.message
-      );
-
-      set({
-        loading: false,
-        error: null,
-      });
+      console.warn("Backend graph API unavailable, using local storage cache:", error?.message);
+      try {
+        const rawN = localStorage.getItem('cni_graph_nodes');
+        const rawL = localStorage.getItem('cni_graph_links');
+        const entities = rawN ? JSON.parse(rawN) : [];
+        const relationships = rawL ? JSON.parse(rawL) : [];
+        set({ entities, relationships, loading: false, error: null });
+      } catch (e) {
+        set({ entities: [], relationships: [], loading: false, error: null });
+      }
     }
   },
 
