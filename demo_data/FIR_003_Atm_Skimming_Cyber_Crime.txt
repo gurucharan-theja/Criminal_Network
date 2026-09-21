@@ -1,0 +1,39 @@
+FIRST INFORMATION REPORT (U/S 154 Cr.P.C.)
+--------------------------------------------------------------------------------
+Police Station: Cyber Crime Police Station, Bengaluru City
+FIR No: 0219/2026
+Date & Time of Incident: 10-Aug-2026 09:15 PM
+Date of Ingestion: 21-Sep-2026
+Sections: Sec 420, 66C, 66D IT Act & Sec 120-B IPC (ATM Skimming & Fraud)
+
+SUBJECT / COMPLAINT DETAILS:
+Investigation into an organized ATM card skimming and unauthorized cash withdrawal racket operating in Koramangala and Indiranagar.
+
+ACCUSED & SUSPECT DETAILS:
+1. Accused: Karan Malhotra (Alias: "Karan Skimmer")
+   Role: Syndicate Kingpin & Tech Lead
+   Phone: +91 9880123456
+   Vehicle: KA-01-MJ-9988 (White Swift Dzire)
+   Location: Koramangala, Bengaluru
+
+2. Suspect: Deepak Joshi (Alias: "Joshi Tech")
+   Role: ATM Device Installer & Micro-Camera Fitter
+   Phone: +91 9880234567
+   Location: HSR Layout, Bengaluru
+
+3. Mule / Financier: Anil Kulkarni
+   Role: Money Laundering & Mule Account Supplier
+   Phone: +91 9880345678
+   Account: 50100982341234 (Canara Bank, Indiranagar Branch)
+   Location: MG Road, Bengaluru
+
+INCIDENT SUMMARY & INVESTIGATION FINDINGS:
+On 10-Aug-2026, hidden ATM skimmer devices and pinhole cameras were detected at Canara Bank ATM, Indiranagar. Surveillance footage identified Deepak Joshi (+91 9880234567) installing the devices on vehicle KA-01-MJ-9988.
+
+Cloned card data was processed by gang leader Karan Malhotra (+91 9880123456). A total of INR 12,50,000 was withdrawn and transferred to mule account 50100982341234 held by Anil Kulkarni (+91 9880345678).
+
+EVIDENCE ATTACHMENTS:
+- ATM CCTV Footage Transcript (Indiranagar ATM)
+- CDR Call Graph (+91 9880123456 to +91 9880234567)
+- Recovered Skimming Device & KA-01-MJ-9988 Vehicle
+--------------------------------------------------------------------------------

@@ -1,0 +1,39 @@
+FIRST INFORMATION REPORT (U/S 154 Cr.P.C.)
+--------------------------------------------------------------------------------
+Police Station: Crime Branch, Pune City Police
+FIR No: 0688/2026
+Date & Time of Incident: 28-May-2026 03:20 AM
+Date of Ingestion: 21-Sep-2026
+Sections: Sec 379, 468, 471, 413 IPC (Inter-State Vehicle Theft & Forgery Racket)
+
+SUBJECT / COMPLAINT DETAILS:
+Investigation into inter-state luxury SUV vehicle lifting, engine number tampering, and fake RC registration book manufacturing gang.
+
+ACCUSED & SUSPECT DETAILS:
+1. Accused: Rahul Deshmukh (Alias: "Rahul Lifter")
+   Role: Master Auto Lifter & Lock Decoder
+   Phone: +91 9822012345
+   Vehicle: MH-12-PQ-4455 (Black Mahindra Thar)
+   Location: Kothrud, Pune
+
+2. Suspect: Sanjay Patil (Alias: "Patil Documenter")
+   Role: Chassis Stamp Tamperer & Fake RC Book Forger
+   Phone: +91 9822023456
+   Location: Pimpri-Chinchwad, Pune
+
+3. Receiver / Garage Owner: Ganesh Shinde
+   Role: Illegal Stolen Car Buyer & Scrap Yard Operator
+   Phone: +91 9822034567
+   Account: 601234567890 (Bank of Maharashtra, Shivajinagar)
+   Location: Hadapsar Garage Zone, Pune
+
+INCIDENT SUMMARY & INVESTIGATION FINDINGS:
+On 28-May-2026, a Mahindra Thar MH-12-PQ-4455 was stolen from Kothrud. CCTV footage identified Rahul Deshmukh (+91 9822012345) bypassing the vehicle engine immobilizer system.
+
+Stolen vehicles were handed over to Sanjay Patil (+91 9822023456) for engine number alteration and forging fake RTO Smart Cards. Garage owner Ganesh Shinde (+91 9822034567) resold the vehicles and transferred funds via Bank of Maharashtra account 601234567890.
+
+EVIDENCE ATTACHMENTS:
+- CCTV Electronic Key Fob Decoder Log
+- CDR Call Transcripts (+91 9822012345 to +91 9822034567)
+- Seizure Memo: Forged RTO Stamps & MH-12-PQ-4455 Thar
+--------------------------------------------------------------------------------
