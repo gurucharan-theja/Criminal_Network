@@ -13,15 +13,15 @@ import useToast from '../hooks/useToast'
 
 // Demo network dataset if database backend is clean
 const DEMO_ENTITIES = [
-  { id: '1', name: 'Vikram "Kala" Sharma', type: 'SUSPECT', riskScore: 92, alias: 'Shadow Boss', phone: '+91 98765 43210' },
-  { id: '2', name: 'Rajesh Malhotra', type: 'PERSON', riskScore: 78, alias: 'Financier', phone: '+91 98123 45678' },
-  { id: '3', name: 'Apex Logistics Corp', type: 'ORGANIZATION', riskScore: 65, alias: 'Front Company', location: 'Mumbai Port' },
-  { id: '4', name: 'Ananya Roy', type: 'PERSON', riskScore: 45, alias: 'Operative', phone: '+91 97111 22233' },
-  { id: '5', name: '+91 99999 88888', type: 'PHONE', riskScore: 85, alias: 'Burner Line 01' },
-  { id: '6', name: 'ACC-8849-XXXX', type: 'ACCOUNT', riskScore: 88, alias: 'Offshore Vault' },
-  { id: '7', name: 'MH-02-CX-4491', type: 'VEHICLE', riskScore: 50, alias: 'Armored SUV' },
-  { id: '8', name: 'Safehouse Alpha', type: 'LOCATION', riskScore: 70, location: 'Goa Coast' },
-  { id: '9', name: 'Sanjay Dutt (Alias)', type: 'SUSPECT', riskScore: 82, alias: 'Courier' },
+  { id: '1', name: 'Vikram "Kala" Sharma', type: 'SUSPECT', riskScore: 92, alias: 'Shadow Boss', phone: '+91 98765 43210', defaultCaseIds: ['case-001', 'case-002', 'case-003', 'CR-2026-9041', 'CR-2026-8812', 'CR-2026-7734'] },
+  { id: '2', name: 'Rajesh Malhotra', type: 'PERSON', riskScore: 78, alias: 'Financier', phone: '+91 98123 45678', defaultCaseIds: ['case-001', 'CR-2026-9041'] },
+  { id: '3', name: 'Apex Logistics Corp', type: 'ORGANIZATION', riskScore: 65, alias: 'Front Company', location: 'Mumbai Port', defaultCaseIds: ['case-001', 'CR-2026-9041'] },
+  { id: '4', name: 'Ananya Roy', type: 'PERSON', riskScore: 45, alias: 'Operative', phone: '+91 97111 22233', defaultCaseIds: ['case-002', 'CR-2026-8812'] },
+  { id: '5', name: '+91 99999 88888', type: 'PHONE', riskScore: 85, alias: 'Burner Line 01', defaultCaseIds: ['case-002', 'case-003', 'CR-2026-8812', 'CR-2026-7734'] },
+  { id: '6', name: 'ACC-8849-XXXX', type: 'ACCOUNT', riskScore: 88, alias: 'Offshore Vault', defaultCaseIds: ['case-001', 'case-003', 'CR-2026-9041', 'CR-2026-7734'] },
+  { id: '7', name: 'MH-02-CX-4491', type: 'VEHICLE', riskScore: 50, alias: 'Armored SUV', defaultCaseIds: ['case-002', 'CR-2026-8812'] },
+  { id: '8', name: 'Safehouse Alpha', type: 'LOCATION', riskScore: 70, location: 'Goa Coast', defaultCaseIds: ['case-002', 'CR-2026-8812'] },
+  { id: '9', name: 'Sanjay Dutt (Alias)', type: 'SUSPECT', riskScore: 82, alias: 'Courier', defaultCaseIds: ['case-003', 'CR-2026-7734'] },
 ]
 
 const DEMO_RELATIONSHIPS = [
@@ -99,30 +99,43 @@ export default function NetworkAnalysis() {
   const categoryFilteredEntities = useMemo(() => {
     if (selectedCategory === 'all') return baseEntities
 
-    return baseEntities.filter(e => {
+    const primaryNodeIds = new Set()
+
+    baseEntities.forEach(e => {
       const typeUpper = String(e.type || '').toUpperCase()
       const roleLower = String(e.role || '').toLowerCase()
       const sourceCatLower = String(e.sourceCategory || e.sourceFile || '').toLowerCase()
 
+      let isMatch = false
       if (selectedCategory === 'case') {
-        return e.caseId || e.caseNumber || e.caseIds || typeUpper === 'PERSON' || typeUpper === 'SUSPECT' || roleLower.includes('kingpin') || roleLower.includes('suspect')
+        isMatch = e.caseId || e.caseNumber || e.caseIds || typeUpper === 'PERSON' || typeUpper === 'SUSPECT' || roleLower.includes('kingpin') || roleLower.includes('suspect')
+      } else if (selectedCategory === 'evidence') {
+        isMatch = sourceCatLower.includes('fir') || sourceCatLower.includes('police') || e.sourceFile || typeUpper === 'LOCATION' || typeUpper === 'ORGANIZATION'
+      } else if (selectedCategory === 'blockchain') {
+        isMatch = typeUpper === 'WALLET' || typeUpper === 'ACCOUNT' || sourceCatLower.includes('financial') || sourceCatLower.includes('blockchain') || roleLower.includes('hawala') || roleLower.includes('vault')
+      } else if (selectedCategory === 'cdr') {
+        isMatch = typeUpper === 'PHONE' || sourceCatLower.includes('cdr') || roleLower.includes('telecom') || roleLower.includes('call') || roleLower.includes('burner')
       }
 
-      if (selectedCategory === 'evidence') {
-        return sourceCatLower.includes('fir') || sourceCatLower.includes('police') || e.sourceFile || typeUpper === 'LOCATION' || typeUpper === 'ORGANIZATION'
+      if (isMatch) {
+        primaryNodeIds.add(String(e.id || e.nodeId))
       }
-
-      if (selectedCategory === 'blockchain') {
-        return typeUpper === 'WALLET' || typeUpper === 'ACCOUNT' || sourceCatLower.includes('financial') || sourceCatLower.includes('blockchain') || roleLower.includes('hawala') || roleLower.includes('vault')
-      }
-
-      if (selectedCategory === 'cdr') {
-        return typeUpper === 'PHONE' || sourceCatLower.includes('cdr') || roleLower.includes('telecom') || roleLower.includes('call') || roleLower.includes('burner')
-      }
-
-      return true
     })
-  }, [baseEntities, selectedCategory])
+
+    if (primaryNodeIds.size === 0) return baseEntities
+
+    // Include 1-hop connected nodes so links and conduits are preserved in network graph
+    const connectedNodeIds = new Set(primaryNodeIds)
+    baseRelationships.forEach(r => {
+      const sId = String(typeof r.source === 'object' ? r.source.id : r.source)
+      const tId = String(typeof r.target === 'object' ? r.target.id : r.target)
+
+      if (primaryNodeIds.has(sId)) connectedNodeIds.add(tId)
+      if (primaryNodeIds.has(tId)) connectedNodeIds.add(sId)
+    })
+
+    return baseEntities.filter(e => connectedNodeIds.has(String(e.id || e.nodeId)))
+  }, [baseEntities, baseRelationships, selectedCategory])
 
   // Case Docket Filtered Entities
   const caseFilteredEntities = useMemo(() => {
@@ -131,19 +144,73 @@ export default function NetworkAnalysis() {
     const targetCase = availableCases.find(c => String(c.id) === String(selectedCaseId) || c.caseNumber === selectedCaseId)
     const caseTitle = targetCase ? String(targetCase.title || '').toLowerCase() : ''
     const caseNum = targetCase ? String(targetCase.caseNumber || targetCase.id).toLowerCase() : String(selectedCaseId).toLowerCase()
+    const targetCaseIdStr = String(selectedCaseId).toLowerCase()
 
-    return categoryFilteredEntities.filter(e => {
-      if (e.caseId && (String(e.caseId) === String(selectedCaseId) || String(e.caseId).toLowerCase() === caseNum)) return true
-      if (e.caseNumber && (String(e.caseNumber) === String(selectedCaseId) || String(e.caseNumber).toLowerCase() === caseNum)) return true
-      if (Array.isArray(e.caseIds) && e.caseIds.some(id => String(id) === String(selectedCaseId) || String(id).toLowerCase() === caseNum)) return true
+    const primaryCaseNodeIds = new Set()
 
-      if (targetCase && Array.isArray(targetCase.entities) && targetCase.entities.some(ce => String(ce.id || ce) === String(e.id || e.nodeId))) return true
+    categoryFilteredEntities.forEach(e => {
+      const eId = String(e.id || e.nodeId)
+      const eCaseId = e.caseId ? String(e.caseId).toLowerCase() : ''
+      const eCaseNum = e.caseNumber ? String(e.caseNumber).toLowerCase() : ''
+      const eCaseIds = Array.isArray(e.caseIds) ? e.caseIds.map(id => String(id).toLowerCase()) : []
+      const defaultIds = Array.isArray(e.defaultCaseIds) ? e.defaultCaseIds.map(id => String(id).toLowerCase()) : []
 
-      if (e.name && caseTitle && caseTitle.includes(e.name.toLowerCase())) return true
+      if (eCaseId && (eCaseId === targetCaseIdStr || eCaseId === caseNum)) {
+        primaryCaseNodeIds.add(eId)
+        return
+      }
+      if (eCaseNum && (eCaseNum === targetCaseIdStr || eCaseNum === caseNum)) {
+        primaryCaseNodeIds.add(eId)
+        return
+      }
+      if (eCaseIds.includes(targetCaseIdStr) || eCaseIds.includes(caseNum)) {
+        primaryCaseNodeIds.add(eId)
+        return
+      }
+      if (defaultIds.includes(targetCaseIdStr) || defaultIds.includes(caseNum)) {
+        primaryCaseNodeIds.add(eId)
+        return
+      }
 
-      return false
+      if (targetCase && Array.isArray(targetCase.entities) && targetCase.entities.some(ce => String(ce.id || ce) === eId)) {
+        primaryCaseNodeIds.add(eId)
+        return
+      }
+
+      if (e.name && caseTitle && caseTitle.includes(e.name.toLowerCase())) {
+        primaryCaseNodeIds.add(eId)
+        return
+      }
+
+      if (['1', '2', '3', '6'].includes(eId) && (targetCaseIdStr.includes('case-001') || caseNum.includes('9041') || caseTitle.includes('coastal') || caseTitle.includes('hawala'))) {
+        primaryCaseNodeIds.add(eId)
+        return
+      }
+      if (['1', '4', '5', '7', '8'].includes(eId) && (targetCaseIdStr.includes('case-002') || caseNum.includes('8812') || caseTitle.includes('red shield') || caseTitle.includes('contraband'))) {
+        primaryCaseNodeIds.add(eId)
+        return
+      }
+      if (['1', '6', '9'].includes(eId) && (targetCaseIdStr.includes('case-003') || caseNum.includes('7734') || caseTitle.includes('ransomware') || caseTitle.includes('ledger'))) {
+        primaryCaseNodeIds.add(eId)
+        return
+      }
     })
-  }, [categoryFilteredEntities, selectedCaseId, availableCases])
+
+    if (primaryCaseNodeIds.size === 0) {
+      return categoryFilteredEntities
+    }
+
+    const connectedCaseNodeIds = new Set(primaryCaseNodeIds)
+    baseRelationships.forEach(r => {
+      const sId = String(typeof r.source === 'object' ? r.source.id : r.source)
+      const tId = String(typeof r.target === 'object' ? r.target.id : r.target)
+
+      if (primaryCaseNodeIds.has(sId)) connectedCaseNodeIds.add(tId)
+      if (primaryCaseNodeIds.has(tId)) connectedCaseNodeIds.add(sId)
+    })
+
+    return categoryFilteredEntities.filter(e => connectedCaseNodeIds.has(String(e.id || e.nodeId)))
+  }, [categoryFilteredEntities, selectedCaseId, availableCases, baseRelationships])
 
   // Active selected entity object
   const activeSelectedNode = useMemo(() => {

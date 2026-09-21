@@ -103,30 +103,42 @@ export default function Insights() {
   const displayNodes = useMemo(() => {
     if (selectedCategory === 'all') return nodes
 
-    return nodes.filter(e => {
+    const primaryNodeIds = new Set()
+
+    nodes.forEach(e => {
       const typeUpper = String(e.type || '').toUpperCase()
       const roleLower = String(e.role || '').toLowerCase()
       const sourceCatLower = String(e.sourceCategory || e.sourceFile || '').toLowerCase()
 
+      let isMatch = false
       if (selectedCategory === 'case') {
-        return e.caseId || e.caseNumber || e.caseIds || typeUpper === 'PERSON' || typeUpper === 'SUSPECT' || roleLower.includes('kingpin') || roleLower.includes('suspect')
+        isMatch = e.caseId || e.caseNumber || e.caseIds || typeUpper === 'PERSON' || typeUpper === 'SUSPECT' || roleLower.includes('kingpin') || roleLower.includes('suspect')
+      } else if (selectedCategory === 'evidence') {
+        isMatch = sourceCatLower.includes('fir') || sourceCatLower.includes('police') || e.sourceFile || typeUpper === 'LOCATION' || typeUpper === 'ORGANIZATION'
+      } else if (selectedCategory === 'blockchain') {
+        isMatch = typeUpper === 'WALLET' || typeUpper === 'ACCOUNT' || sourceCatLower.includes('financial') || sourceCatLower.includes('blockchain') || roleLower.includes('hawala') || roleLower.includes('vault')
+      } else if (selectedCategory === 'cdr') {
+        isMatch = typeUpper === 'PHONE' || sourceCatLower.includes('cdr') || roleLower.includes('telecom') || roleLower.includes('call') || roleLower.includes('burner')
       }
 
-      if (selectedCategory === 'evidence') {
-        return sourceCatLower.includes('fir') || sourceCatLower.includes('police') || e.sourceFile || typeUpper === 'LOCATION' || typeUpper === 'ORGANIZATION'
+      if (isMatch) {
+        primaryNodeIds.add(String(e.id || e.nodeId))
       }
-
-      if (selectedCategory === 'blockchain') {
-        return typeUpper === 'WALLET' || typeUpper === 'ACCOUNT' || sourceCatLower.includes('financial') || sourceCatLower.includes('blockchain') || roleLower.includes('hawala') || roleLower.includes('vault')
-      }
-
-      if (selectedCategory === 'cdr') {
-        return typeUpper === 'PHONE' || sourceCatLower.includes('cdr') || roleLower.includes('telecom') || roleLower.includes('call') || roleLower.includes('burner')
-      }
-
-      return true
     })
-  }, [nodes, selectedCategory])
+
+    if (primaryNodeIds.size === 0) return nodes
+
+    const connectedNodeIds = new Set(primaryNodeIds)
+    links.forEach(l => {
+      const sId = String(typeof l.source === 'object' ? l.source.id : l.source)
+      const tId = String(typeof l.target === 'object' ? l.target.id : l.target)
+
+      if (primaryNodeIds.has(sId)) connectedNodeIds.add(tId)
+      if (primaryNodeIds.has(tId)) connectedNodeIds.add(sId)
+    })
+
+    return nodes.filter(e => connectedNodeIds.has(String(e.id || e.nodeId)))
+  }, [nodes, links, selectedCategory])
 
   // Dynamic suspicious patterns derived from real entities
   const suspiciousPatterns = useMemo(() => {
