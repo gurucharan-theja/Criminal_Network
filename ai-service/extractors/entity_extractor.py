@@ -98,11 +98,19 @@ def extract_entities(text: str, filename: str = "document") -> List[Dict[str, An
             })
 
     # 4. Extract Persons & Suspect Names with Role Inference
-    # Look for honorifics / criminal aliases / name patterns
+    NON_PERSON_STOPWORDS = {
+        "Police Station", "Police Department", "Crime Branch", "Special Cell",
+        "State Bank", "High Court", "District Court", "Indian Penal",
+        "Code Section", "Public Notice", "Union Territory", "Apex Logistics",
+        "Reserve Bank", "Telecom Network", "Call Detail", "Seizure Memo",
+        "First Information", "Charge Sheet", "Judicial Custody"
+    }
+
     person_patterns = [
-        re.compile(r'\b(?:Shri|Mr\.|Accused|Suspect|Alias|Gangster)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b'),
-        re.compile(r'\b([A-Z][a-z]+\s+[A-Z][a-z]+)\s+(?:alias|@)\s+([A-Z][a-z]+)\b', re.IGNORECASE),
-        re.compile(r'\b(?:named|identified as|arrested)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)\b')
+        re.compile(r'\b(?:Shri|Smt|Mr\.?|Mrs\.?|Dr\.?|Accused|Suspect|Alias|Gangster|Don|Bhai|Kingpin|Mastermind|Operative|Financier|Courier|Handler|Officer|Inspector)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b'),
+        re.compile(r'\b([A-Z][a-z]+\s+[A-Z][a-z]+)\s+(?:alias|@)\s+([A-Z][a-zA-Z0-9]+)\b', re.IGNORECASE),
+        re.compile(r'\b(?:named|identified as|arrested|interrogated|handler|mule|courier|operates|contacted)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)\b', re.IGNORECASE),
+        re.compile(r'\b([A-Z][a-z]{2,15}\s+[A-Z][a-z]{2,15}(?:\s+[A-Z][a-z]{2,15})?)\b'),
     ]
 
     suspect_names = set()
@@ -111,10 +119,13 @@ def extract_entities(text: str, filename: str = "document") -> List[Dict[str, An
         for m in matches:
             if isinstance(m, tuple):
                 for sub in m:
-                    if sub.strip():
-                        suspect_names.add(sub.strip())
+                    candidate = sub.strip()
+                    if candidate and candidate not in NON_PERSON_STOPWORDS and len(candidate) >= 4:
+                        suspect_names.add(candidate)
             else:
-                suspect_names.add(m.strip())
+                candidate = m.strip()
+                if candidate and candidate not in NON_PERSON_STOPWORDS and len(candidate) >= 4:
+                    suspect_names.add(candidate)
 
     for name in suspect_names:
         # Determine specific role by text context around the name

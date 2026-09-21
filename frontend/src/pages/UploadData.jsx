@@ -571,73 +571,93 @@ export default function UploadData() {
           )
 
           // ---------------------------------------------------
-          // Suspect lines
+          // Enhanced Person Entity Extraction (Contextual NLP Engine)
           // ---------------------------------------------------
 
-          const lines =
-            text.split('\n')
+          const NON_PERSON_STOPWORDS = new Set([
+            'Police Station', 'Police Department', 'Crime Branch', 'Special Cell',
+            'State Bank', 'High Court', 'District Court', 'Indian Penal',
+            'Code Section', 'Public Notice', 'Union Territory', 'Apex Logistics',
+            'Reserve Bank', 'Telecom Network', 'Call Detail', 'Seizure Memo',
+            'First Information', 'Charge Sheet', 'Judicial Custody'
+          ])
 
-          lines.forEach(
-            (line, lIdx) => {
+          const personPatterns = [
+            /\b(?:Shri|Smt|Mr\.?|Mrs\.?|Dr\.?|Accused|Suspect|Alias|Gangster|Don|Bhai|Kingpin|Mastermind|Operative|Financier|Courier|Handler|Officer|Inspector)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b/g,
+            /\b([A-Z][a-z]+\s+[A-Z][a-z]+)\s+(?:alias|@)\s+([A-Z][a-zA-Z0-9]+)\b/gi,
+            /\b(?:named|identified as|arrested|interrogated|handler|mule|courier|operates|contacted|suspect)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)\b/gi,
+            /\b([A-Z][a-z]{2,15}\s+[A-Z][a-z]{2,15})\b/g,
+          ]
 
+          const ROLE_RULES = [
+            { role: 'Kingpin / Mastermind', keywords: ['kingpin', 'mastermind', 'boss', 'leader', 'syndicate head', 'chief', 'gangster', 'don'], risk: 'high' },
+            { role: 'Financier', keywords: ['hawala', 'financier', 'investor', 'treasurer', 'accountant', 'mule account', 'laundering'], risk: 'high' },
+            { role: 'Operative', keywords: ['operative', 'courier', 'handler', 'enforcer', 'shooter', 'agent', 'carrier'], risk: 'medium' },
+            { role: 'Logistics / Transport', keywords: ['driver', 'supplier', 'smuggler', 'transporter', 'arms dealer', 'vehicle'], risk: 'medium' },
+            { role: 'Informant / Tipster', keywords: ['informant', 'tipster', 'source', 'mole', 'insider'], risk: 'low' },
+          ]
+
+          const extractedPersonNames = new Set()
+
+          personPatterns.forEach((pattern) => {
+            let match
+            while ((match = pattern.exec(text)) !== null) {
+              const matchedName = (match[1] || match[0]).trim()
               if (
-                /accused|suspect|alias|convoy|operator/i.test(
-                  line
-                )
+                matchedName.length >= 4 &&
+                !NON_PERSON_STOPWORDS.has(matchedName) &&
+                !matchedName.toLowerCase().includes('section') &&
+                !matchedName.toLowerCase().includes('court') &&
+                !matchedName.toLowerCase().includes('station')
               ) {
+                extractedPersonNames.add(matchedName)
+              }
+            }
+          })
 
-                const cleaned =
-                  line
-                    .replace(
-                      /[^a-zA-Z0-9\s]/g,
-                      ' '
-                    )
-                    .trim()
-
-                const words =
-                  cleaned
-                    .split(/\s+/)
-                    .filter(
-                      (w) =>
-                        w.length > 2
-                    )
-
-                if (
-                  words.length >= 2
-                ) {
-
-                  const entityName =
-                    words
-                      .slice(0, 3)
-                      .join(' ')
-
-                  extractedEntities.push({
-
-                    id:
-                      `suspect-${Date.now()}-${lIdx}`,
-
-                    name:
-                      entityName,
-
-                    type:
-                      'Person',
-
-                    role:
-                      'Flagged Suspect in Evidence',
-
-                    risk:
-                      'high',
-
-                    sourceFile:
-                      f.name,
-
-                    connections:
-                      1
-                  })
+          const textLines = text.split('\n')
+          textLines.forEach((line) => {
+            if (/accused|suspect|alias|convoy|operator|kingpin|financier/i.test(line)) {
+              const cleaned = line.replace(/[^a-zA-Z0-9\s]/g, ' ').trim()
+              const words = cleaned.split(/\s+/).filter((w) => w.length > 2)
+              if (words.length >= 2) {
+                const candidateName = words.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+                if (!NON_PERSON_STOPWORDS.has(candidateName) && candidateName.length >= 5) {
+                  extractedPersonNames.add(candidateName)
                 }
               }
             }
-          )
+          })
+
+          let personIdx = 0
+          extractedPersonNames.forEach((personName) => {
+            personIdx++
+            const nameLower = personName.toLowerCase()
+            let assignedRole = 'Suspect / Operative'
+            let assignedRisk = 'medium'
+
+            const idxInText = text.toLowerCase().indexOf(nameLower)
+            if (idxInText !== -1) {
+              const windowText = text.substring(Math.max(0, idxInText - 150), Math.min(text.length, idxInText + 150)).toLowerCase()
+              for (const rule of ROLE_RULES) {
+                if (rule.keywords.some((kw) => windowText.includes(kw))) {
+                  assignedRole = rule.role
+                  assignedRisk = rule.risk
+                  break
+                }
+              }
+            }
+
+            extractedEntities.push({
+              id: `person-${Date.now()}-${personIdx}`,
+              name: personName,
+              type: 'Person',
+              role: assignedRole,
+              risk: assignedRisk,
+              sourceFile: f.name,
+              connections: 1,
+            })
+          })
 
           // ---------------------------------------------------
           // Fallback relations
