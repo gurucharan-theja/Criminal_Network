@@ -589,8 +589,8 @@ export default function UploadData() {
 
           const personPatterns = [
             /\b(?:Shri|Smt|Mr\.?|Mrs\.?|Ms\.?|Dr\.?|Accused|Suspect|Alias|Gangster|Don|Bhai|Kingpin|Mastermind|Operative|Financier|Courier|Handler|Officer|Inspector)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b/g,
-            /\b([A-Z][a-z]+\s+[A-Z][a-z]+)\s+(?:alias|@)\s+([A-Z][a-zA-Z0-9]+)\b/gi,
-            /\b(?:named|identified as|arrested|interrogated|handler|mule|courier|operates|contacted)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)\b/gi,
+            /\b([A-Z][a-z]+\s+[A-Z][a-z]+)\s+(?:alias|@)\s+([A-Z][a-zA-Z0-9]+)\b/g,
+            /\b(?:named|identified as|arrested|interrogated|handler|mule|courier|operates|contacted)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)\b/g,
           ]
 
           const ROLE_RULES = [
@@ -604,8 +604,9 @@ export default function UploadData() {
           const extractedPersonNames = new Set()
 
           personPatterns.forEach((pattern) => {
-            let match
-            while ((match = pattern.exec(text)) !== null) {
+            const freshPattern = new RegExp(pattern.source, pattern.flags)
+            const matches = Array.from(text.matchAll(freshPattern))
+            matches.forEach((match) => {
               const matchedName = (match[1] || match[0]).trim()
               const words = matchedName.split(/\s+/).map((w) => w.toLowerCase())
               if (
@@ -613,6 +614,24 @@ export default function UploadData() {
                 !words.some((w) => NON_PERSON_WORDS.has(w))
               ) {
                 extractedPersonNames.add(matchedName)
+              }
+            })
+          })
+
+          const textLines = text.split(/\r?\n/)
+          textLines.forEach((line) => {
+            const trimmedLine = line.trim()
+            if (!trimmedLine) return
+
+            const labelMatch = trimmedLine.match(/^(?:Accused|Suspect|Target|Name|Kingpin|Financier|Operative|Courier|Handler|Co-Accused)\s*(?:Name)?\s*[:\-=]\s*([A-Za-z\s]{3,35})/i)
+            if (labelMatch && labelMatch[1]) {
+              const nameCandidate = labelMatch[1].trim()
+              const words = nameCandidate.split(/\s+/).map((w) => w.toLowerCase())
+              if (
+                nameCandidate.length >= 4 &&
+                !words.some((w) => NON_PERSON_WORDS.has(w))
+              ) {
+                extractedPersonNames.add(nameCandidate)
               }
             }
           })
