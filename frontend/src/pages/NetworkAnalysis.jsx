@@ -1,12 +1,14 @@
-﻿import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Network, Search, Filter, RefreshCw, ShieldAlert,
   Users, ArrowUpRight, Info, HelpCircle, Layers, CheckCircle2,
-  GitBranch, Target, Zap, ChevronRight, Trash2
+  GitBranch, Target, Zap, ChevronRight, Trash2, FolderOpen
 } from 'lucide-react'
 import NetworkGraph from '../graph/NetworkGraph'
 import useNetworkStore from '../store/useNetworkStore'
 import useGraphStore from '../store/useGraphStore'
+import useCaseStore from '../store/useCaseStore'
 import useToast from '../hooks/useToast'
 
 // Demo network dataset if database backend is clean
@@ -47,6 +49,10 @@ export default function NetworkAnalysis() {
     clearNetwork,
   } = useNetworkStore()
 
+  const [searchParams] = useSearchParams()
+  const { cases: availableCases, loadCases } = useCaseStore()
+  const [selectedCaseId, setSelectedCaseId] = useState(searchParams.get('case') || 'ALL')
+
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedType, setSelectedType] = useState('ALL')
   const [selectedCategory, setSelectedCategory] = useState('all') // 'all', 'case', 'evidence', 'blockchain', 'cdr'
@@ -71,10 +77,18 @@ export default function NetworkAnalysis() {
     }
   }
 
-  // Fetch from store on load
+  // Fetch network & case dockets on load
   useEffect(() => {
     fetchNetwork()
-  }, [fetchNetwork])
+    loadCases()
+  }, [fetchNetwork, loadCases])
+
+  useEffect(() => {
+    const cParam = searchParams.get('case')
+    if (cParam) {
+      setSelectedCaseId(cParam)
+    }
+  }, [searchParams])
 
   // Determine base dataset (Store or Demo fallback, respecting explicit deletions)
   const isGraphCleared = typeof localStorage !== 'undefined' && localStorage.getItem('cni_graph_cleared') === 'true'
@@ -109,6 +123,27 @@ export default function NetworkAnalysis() {
       return true
     })
   }, [baseEntities, selectedCategory])
+
+  // Case Docket Filtered Entities
+  const caseFilteredEntities = useMemo(() => {
+    if (selectedCaseId === 'ALL') return categoryFilteredEntities
+
+    const targetCase = availableCases.find(c => String(c.id) === String(selectedCaseId) || c.caseNumber === selectedCaseId)
+    const caseTitle = targetCase ? String(targetCase.title || '').toLowerCase() : ''
+    const caseNum = targetCase ? String(targetCase.caseNumber || targetCase.id).toLowerCase() : String(selectedCaseId).toLowerCase()
+
+    return categoryFilteredEntities.filter(e => {
+      if (e.caseId && (String(e.caseId) === String(selectedCaseId) || String(e.caseId).toLowerCase() === caseNum)) return true
+      if (e.caseNumber && (String(e.caseNumber) === String(selectedCaseId) || String(e.caseNumber).toLowerCase() === caseNum)) return true
+      if (Array.isArray(e.caseIds) && e.caseIds.some(id => String(id) === String(selectedCaseId) || String(id).toLowerCase() === caseNum)) return true
+
+      if (targetCase && Array.isArray(targetCase.entities) && targetCase.entities.some(ce => String(ce.id || ce) === String(e.id || e.nodeId))) return true
+
+      if (e.name && caseTitle && caseTitle.includes(e.name.toLowerCase())) return true
+
+      return false
+    })
+  }, [categoryFilteredEntities, selectedCaseId, availableCases])
 
   // Active selected entity object
   const activeSelectedNode = useMemo(() => {
@@ -152,7 +187,7 @@ export default function NetworkAnalysis() {
 
   // Compute Final Visible Entities
   const finalFilteredEntities = useMemo(() => {
-    let result = categoryFilteredEntities
+    let result = caseFilteredEntities
 
     if (degreeFilteredNodeIds) {
       result = result.filter(e => degreeFilteredNodeIds.has(String(e.id || e.nodeId)))
@@ -172,7 +207,7 @@ export default function NetworkAnalysis() {
     }
 
     return result
-  }, [categoryFilteredEntities, degreeFilteredNodeIds, selectedType, searchTerm])
+  }, [caseFilteredEntities, degreeFilteredNodeIds, selectedType, searchTerm])
 
   const finalFilteredNodeIds = useMemo(() => new Set(finalFilteredEntities.map(e => String(e.id || e.nodeId))), [finalFilteredEntities])
 
@@ -399,6 +434,7 @@ export default function NetworkAnalysis() {
               </span>
               {[
                 { id: 'all',        label: '🌐 All Data',           color: '#2563EB' },
+                { id: 'case',       label: '📁 Case Dockets',       color: '#7C3AED' },
                 { id: 'evidence',   label: '📄 Document Evidence', color: '#16A34A' },
                 { id: 'blockchain', label: '⛓️ Blockchain Audit',  color: '#D97706' },
                 { id: 'cdr',        label: '📞 CDR Telecom',       color: '#DC2626' },
@@ -426,41 +462,67 @@ export default function NetworkAnalysis() {
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
               {/* Search Box */}
-            <div style={{ position: 'relative', width: 260 }}>
-              <Search size={16} style={{ position: 'absolute', left: 12, top: 10, color: '#94A3B8' }} />
-              <input
-                type="text"
-                placeholder="Search entities, aliases..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px 8px 36px',
-                  borderRadius: 8,
-                  border: '1px solid #CBD5E1',
-                  fontSize: '0.88rem',
-                  outline: 'none'
-                }}
-              />
-            </div>
+              <div style={{ position: 'relative', width: 260 }}>
+                <Search size={16} style={{ position: 'absolute', left: 12, top: 10, color: '#94A3B8' }} />
+                <input
+                  type="text"
+                  placeholder="Search entities, aliases..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px 8px 36px',
+                    borderRadius: 8,
+                    border: '1px solid #CBD5E1',
+                    fontSize: '0.88rem',
+                    outline: 'none'
+                  }}
+                />
+              </div>
 
-            {/* Type Filter */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Filter size={14} style={{ color: '#64748B' }} />
-              <select
-                value={selectedType}
-                onChange={e => setSelectedType(e.target.value)}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 8,
-                  border: '1px solid #CBD5E1',
-                  fontSize: '0.88rem',
-                  background: '#FFFFFF',
-                  color: '#0F172A',
-                  cursor: 'pointer'
-                }}
-              >
-                <option value="ALL">All Entity Types</option>
+              {/* Case Docket Selector Dropdown */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FolderOpen size={15} style={{ color: '#7C3AED' }} />
+                <select
+                  value={selectedCaseId}
+                  onChange={e => setSelectedCaseId(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: '1px solid #CBD5E1',
+                    fontSize: '0.88rem',
+                    background: '#FFFFFF',
+                    color: '#0F172A',
+                    cursor: 'pointer',
+                    fontWeight: selectedCaseId !== 'ALL' ? 700 : 400
+                  }}
+                >
+                  <option value="ALL">📁 All Available Cases ({availableCases.length})</option>
+                  {availableCases.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.caseNumber || `CASE-${c.id}`} — {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Type Filter */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Filter size={14} style={{ color: '#64748B' }} />
+                <select
+                  value={selectedType}
+                  onChange={e => setSelectedType(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: '1px solid #CBD5E1',
+                    fontSize: '0.88rem',
+                    background: '#FFFFFF',
+                    color: '#0F172A',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="ALL">All Entity Types</option>
                 <option value="SUSPECT">Suspects</option>
                 <option value="PERSON">Persons</option>
                 <option value="ORGANIZATION">Organizations</option>
