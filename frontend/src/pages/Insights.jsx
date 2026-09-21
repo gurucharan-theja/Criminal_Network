@@ -315,48 +315,7 @@ export default function Insights() {
         </div>
       </div>
 
-      {/* Intelligence Category Toolbar (Case, Evidence, Blockchain, CDR) */}
-      <div style={{
-        margin: '16px 0 20px',
-        padding: '12px 16px',
-        background: '#FFFFFF',
-        border: '1px solid var(--border)',
-        borderRadius: 12,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        flexWrap: 'wrap'
-      }}>
-        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginRight: 4 }}>
-          FILTER INTELLIGENCE CATEGORY:
-        </span>
-        {[
-          { id: 'all',        label: '🌐 All Data',           color: 'var(--primary)' },
-          { id: 'case',       label: '📁 Case Dockets',       color: '#7C3AED' },
-          { id: 'evidence',   label: '📄 Document Evidence', color: '#16A34A' },
-          { id: 'blockchain', label: '⛓️ Blockchain Audit',  color: '#D97706' },
-          { id: 'cdr',        label: '📞 CDR Telecom',       color: '#DC2626' },
-        ].map(cat => (
-          <button
-            key={cat.id}
-            onClick={() => setSelectedCategory(cat.id)}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 8,
-              border: `1.5px solid ${selectedCategory === cat.id ? cat.color : 'var(--border)'}`,
-              background: selectedCategory === cat.id ? '#FFFFFF' : 'var(--panel)',
-              color: selectedCategory === cat.id ? cat.color : 'var(--muted)',
-              fontWeight: selectedCategory === cat.id ? 800 : 500,
-              fontSize: '0.8rem',
-              cursor: 'pointer',
-              boxShadow: selectedCategory === cat.id ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
-              transition: 'all 150ms ease'
-            }}
-          >
-            {cat.label}
-          </button>
-        ))}
-      </div>
+    
 
       {/* KPI row */}
       <div className="grid-4 mb-24">

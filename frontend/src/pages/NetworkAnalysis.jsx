@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react'
+﻿import React, { useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   Network, Search, Filter, RefreshCw, ShieldAlert,
@@ -520,37 +520,7 @@ export default function NetworkAnalysis() {
             gap: 12
           }}>
             {/* Source Category Toolbar (Case, Evidence, Blockchain, CDR) */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em', marginRight: 4 }}>
-                INTELLIGENCE SOURCE:
-              </span>
-              {[
-                { id: 'all',        label: '🌐 All Data',           color: '#2563EB' },
-                { id: 'case',       label: '📁 Case Dockets',       color: '#7C3AED' },
-                { id: 'evidence',   label: '📄 Document Evidence', color: '#16A34A' },
-                { id: 'blockchain', label: '⛓️ Blockchain Audit',  color: '#D97706' },
-                { id: 'cdr',        label: '📞 CDR Telecom',       color: '#DC2626' },
-              ].map(cat => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: 8,
-                    border: `1.5px solid ${selectedCategory === cat.id ? cat.color : '#CBD5E1'}`,
-                    background: selectedCategory === cat.id ? '#FFFFFF' : '#F8FAFC',
-                    color: selectedCategory === cat.id ? cat.color : '#475569',
-                    fontWeight: selectedCategory === cat.id ? 800 : 500,
-                    fontSize: '0.8rem',
-                    cursor: 'pointer',
-                    boxShadow: selectedCategory === cat.id ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-                    transition: 'all 150ms ease'
-                  }}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
+            
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
               {/* Search Box */}
@@ -573,31 +543,7 @@ export default function NetworkAnalysis() {
               </div>
 
               {/* Case Docket Selector Dropdown */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <FolderOpen size={15} style={{ color: '#7C3AED' }} />
-                <select
-                  value={selectedCaseId}
-                  onChange={e => setSelectedCaseId(e.target.value)}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    border: '1px solid #CBD5E1',
-                    fontSize: '0.88rem',
-                    background: '#FFFFFF',
-                    color: '#0F172A',
-                    cursor: 'pointer',
-                    fontWeight: selectedCaseId !== 'ALL' ? 700 : 400
-                  }}
-                >
-                  <option value="ALL">📁 All Available Cases ({availableCases.length})</option>
-                  {availableCases.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.caseNumber || `CASE-${c.id}`} — {c.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
+             
               {/* Type Filter */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Filter size={14} style={{ color: '#64748B' }} />
@@ -615,7 +561,6 @@ export default function NetworkAnalysis() {
                   }}
                 >
                   <option value="ALL">All Entity Types</option>
-                <option value="SUSPECT">Suspects</option>
                 <option value="PERSON">Persons</option>
                 <option value="ORGANIZATION">Organizations</option>
                 <option value="PHONE">Phones</option>

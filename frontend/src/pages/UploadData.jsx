@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useState, useRef, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Upload,
   FileText,
@@ -15,12 +15,9 @@ import {
   Phone,
   DollarSign,
   Database,
-  FolderOpen,
 } from 'lucide-react'
 
 import useGraphStore from '../store/useGraphStore'
-import useNetworkStore from '../store/useNetworkStore'
-import useCaseStore from '../store/useCaseStore'
 import useToast from '../hooks/useToast'
 import axiosClient from '../api/axiosClient'
 import { analyseDocument } from '../api/analysisApi'
@@ -102,11 +99,6 @@ const AI_STEPS = [
 ]
 
 export default function UploadData() {
-  const [searchParams] = useSearchParams()
-  const { cases: availableCases, loadCases } = useCaseStore()
-  const [selectedTargetCaseId, setSelectedTargetCaseId] = useState(
-    searchParams.get('case') || searchParams.get('caseId') || 'ALL'
-  )
 
   const [dragOver, setDragOver] = useState(false)
   const [files, setFiles] = useState([])
@@ -126,17 +118,6 @@ export default function UploadData() {
 
   const mergeExtractionResult =
     useGraphStore((s) => s.mergeExtractionResult)
-
-  useEffect(() => {
-    loadCases()
-  }, [loadCases])
-
-  useEffect(() => {
-    const cParam = searchParams.get('case') || searchParams.get('caseId')
-    if (cParam) {
-      setSelectedTargetCaseId(cParam)
-    }
-  }, [searchParams])
 
   // =========================================================
   // ADD FILES
@@ -789,57 +770,21 @@ export default function UploadData() {
       }
 
       // =======================================================
-      // Merge normal extraction results & Tag Target Case Docket
+      // Merge normal extraction results
       // =======================================================
 
-      if (extractedEntities.length > 0) {
-        if (selectedTargetCaseId !== 'ALL') {
-          const targetCase = availableCases.find(
-            (c) => String(c.id) === String(selectedTargetCaseId) || c.caseNumber === selectedTargetCaseId
-          )
-          const cId = targetCase ? targetCase.id : selectedTargetCaseId
-          const cNum = targetCase ? (targetCase.caseNumber || targetCase.id) : selectedTargetCaseId
-
-          extractedEntities.forEach((e) => {
-            e.caseId = cId
-            e.caseNumber = cNum
-            e.caseIds = [cId, cNum]
-          })
-
-          extractedRelations.forEach((r) => {
-            r.caseId = cId
-            r.caseNumber = cNum
-            r.caseIds = [cId, cNum]
-          })
-
-          if (targetCase) {
-            const existingFiles = Array.isArray(targetCase.sourceFiles) ? targetCase.sourceFiles : []
-            const newFileNames = files.map((f) => f.name)
-            const updatedSourceFiles = Array.from(new Set([...existingFiles, ...newFileNames]))
-
-            const existingEntities = Array.isArray(targetCase.entities) ? targetCase.entities : []
-            const newEntityIds = extractedEntities.map((e) => e.id || e.name)
-            const updatedEntities = Array.from(new Set([...existingEntities, ...newEntityIds]))
-
-            useCaseStore.getState().editCase(targetCase.id, {
-              sourceFiles: updatedSourceFiles,
-              entities: updatedEntities,
-            })
-          }
-        }
+      if (
+        extractedEntities.length > 0
+      ) {
 
         mergeExtractionResult({
-          entities: extractedEntities,
-          relations: extractedRelations
+
+          entities:
+            extractedEntities,
+
+          relations:
+            extractedRelations
         })
-
-        // Sync network and case stores instantly for cross-page real time rendering
-        useNetworkStore.getState().fetchNetwork()
-        useCaseStore.getState().loadCases()
-
-        try {
-          window.dispatchEvent(new CustomEvent('crime_net_data_changed'))
-        } catch (e) {}
       }
 
       // =======================================================
@@ -1132,55 +1077,6 @@ export default function UploadData() {
             gap: 18
           }}
         >
-          {/* TARGET CASE DOCKET SELECTOR CARD */}
-          <div
-            style={{
-              background: 'linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 100%)',
-              border: '1.5px solid #BFDBFE',
-              borderRadius: 12,
-              padding: '14px 18px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 12
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <FolderOpen size={22} style={{ color: '#2563EB' }} />
-              <div>
-                <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#0F172A' }}>
-                  Target Case Docket Assignment
-                </div>
-                <div style={{ fontSize: '0.78rem', color: '#64748B' }}>
-                  Extracted suspects & relations will be assigned directly to this investigation docket
-                </div>
-              </div>
-            </div>
-
-            <select
-              value={selectedTargetCaseId}
-              onChange={(e) => setSelectedTargetCaseId(e.target.value)}
-              style={{
-                padding: '9px 14px',
-                borderRadius: 8,
-                border: '1.5px solid #2563EB',
-                fontSize: '0.88rem',
-                fontWeight: 700,
-                background: '#FFFFFF',
-                color: '#0F172A',
-                cursor: 'pointer',
-                minWidth: 260
-              }}
-            >
-              <option value="ALL">🌐 All Cases / Global Intelligence</option>
-              {availableCases.map((c) => (
-                <option key={c.id} value={c.id}>
-                  📁 {c.caseNumber || `CASE-${c.id}`} — {c.title}
-                </option>
-              ))}
-            </select>
-          </div>
 
           {/* SOURCE CATEGORY */}
 

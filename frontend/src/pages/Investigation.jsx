@@ -710,42 +710,7 @@ export default function Investigation() {
             c.status
           )
 
-          return (
-            <button
-              key={c.id}
-              className={`btn btn-sm ${
-                isActiveTab
-                  ? 'btn-secondary'
-                  : 'btn-outline'
-              }`}
-              onClick={() => {
-                setCaseFilter(String(c.id))
-                setSelectedEntity(null)
-                setShowAllIfEmpty(false)
-                navigate(
-                  `/investigation?case=${c.id}`
-                )
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6
-              }}
-            >
-              <span
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: '50%',
-                  background:
-                    statusColor(caseStatus),
-                  display: 'inline-block'
-                }}
-              />
-
-              <span>{c.title}</span>
-            </button>
-          )
+         
         })}
 
         <button
