@@ -93,17 +93,47 @@ export default function Insights() {
   const { nodes, links, loadGraph } = useGraphStore()
   const [activeCluster, setActiveCluster] = useState(null)
   const [showExport, setShowExport] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState('all') // 'all', 'case', 'evidence', 'blockchain', 'cdr'
 
   useEffect(() => {
     loadGraph()
   }, [])
 
+  // Filter nodes by selected category (Case, Evidence, Blockchain, CDR)
+  const displayNodes = useMemo(() => {
+    if (selectedCategory === 'all') return nodes
+
+    return nodes.filter(e => {
+      const typeUpper = String(e.type || '').toUpperCase()
+      const roleLower = String(e.role || '').toLowerCase()
+      const sourceCatLower = String(e.sourceCategory || e.sourceFile || '').toLowerCase()
+
+      if (selectedCategory === 'case') {
+        return e.caseId || e.caseNumber || e.caseIds || typeUpper === 'PERSON' || typeUpper === 'SUSPECT' || roleLower.includes('kingpin') || roleLower.includes('suspect')
+      }
+
+      if (selectedCategory === 'evidence') {
+        return sourceCatLower.includes('fir') || sourceCatLower.includes('police') || e.sourceFile || typeUpper === 'LOCATION' || typeUpper === 'ORGANIZATION'
+      }
+
+      if (selectedCategory === 'blockchain') {
+        return typeUpper === 'WALLET' || typeUpper === 'ACCOUNT' || sourceCatLower.includes('financial') || sourceCatLower.includes('blockchain') || roleLower.includes('hawala') || roleLower.includes('vault')
+      }
+
+      if (selectedCategory === 'cdr') {
+        return typeUpper === 'PHONE' || sourceCatLower.includes('cdr') || roleLower.includes('telecom') || roleLower.includes('call') || roleLower.includes('burner')
+      }
+
+      return true
+    })
+  }, [nodes, selectedCategory])
+
   // Dynamic suspicious patterns derived from real entities
   const suspiciousPatterns = useMemo(() => {
-    if (nodes.length === 0) return []
+    if (displayNodes.length === 0) return []
 
     const patterns = []
-    const highRiskNodes = nodes.filter(e => e.risk === 'high')
+    const highRiskNodes = displayNodes.filter(e => e.risk === 'high')
     if (highRiskNodes.length > 0) {
       const topSuspect = highRiskNodes[0]
       patterns.push({
@@ -117,7 +147,7 @@ export default function Insights() {
       })
     }
 
-    const orgs = nodes.filter(e => e.type === 'Organization')
+    const orgs = displayNodes.filter(e => e.type === 'Organization')
     if (orgs.length > 0 && highRiskNodes.length > 0) {
       patterns.push({
         id: 'PAT-02',
@@ -130,7 +160,7 @@ export default function Insights() {
       })
     }
 
-    const phones = nodes.filter(e => e.type === 'Phone')
+    const phones = displayNodes.filter(e => e.type === 'Phone')
     if (phones.length > 0) {
       patterns.push({
         id: 'PAT-03',
@@ -138,22 +168,22 @@ export default function Insights() {
         severity: 'ELEVATED',
         badgeColor: '#1565C0',
         conduit: `${phones[0].name} ↔ Intercepted Telecom Links`,
-        summary: `Communication node exhibits dense telephonic clustering across disparate syndicate operators.`,
-        recommendedAction: `Issue Section 91 CrPC notice for subscriber verification and CDR telemetry.`
+        summary: `Cellular endpoint utilized for syndicate coordination.`,
+        recommendedAction: `Obtain tower dump and IMEI binding from telecom service provider.`
       })
     }
 
     return patterns
-  }, [nodes])
+  }, [displayNodes])
 
-  /* Type distribution for donut */
+  /* Entity type distribution chart data */
   const typeCounts = useMemo(() => [
-    { label: 'Person',       value: nodes.filter(e => e.type === 'Person').length,       color: '#3B82F6' },
-    { label: 'Organization', value: nodes.filter(e => e.type === 'Organization').length, color: '#22D3EE' },
-    { label: 'Location',     value: nodes.filter(e => e.type === 'Location').length,     color: '#22C55E' },
-    { label: 'Vehicle',      value: nodes.filter(e => e.type === 'Vehicle').length,      color: '#F59E0B' },
-    { label: 'Phone',        value: nodes.filter(e => e.type === 'Phone').length,        color: '#A78BFA' },
-  ], [nodes])
+    { label: 'Person',       value: displayNodes.filter(e => e.type === 'Person').length,       color: '#3B82F6' },
+    { label: 'Organization', value: displayNodes.filter(e => e.type === 'Organization').length, color: '#22D3EE' },
+    { label: 'Location',     value: displayNodes.filter(e => e.type === 'Location').length,     color: '#22C55E' },
+    { label: 'Vehicle',      value: displayNodes.filter(e => e.type === 'Vehicle').length,      color: '#F59E0B' },
+    { label: 'Phone',        value: displayNodes.filter(e => e.type === 'Phone').length,        color: '#A78BFA' },
+  ], [displayNodes])
 
   /* Link type distribution */
   const linkTypes = useMemo(() => {
@@ -166,7 +196,7 @@ export default function Insights() {
 
   /* Dynamic Top connected nodes (Key Influencers) */
   const topNodes = useMemo(() => {
-    return nodes.map(n => {
+    return displayNodes.map(n => {
       const degree = links.filter(l =>
         (l.source?.id || l.source) === n.id ||
         (l.target?.id || l.target) === n.id
@@ -176,15 +206,15 @@ export default function Insights() {
         connections: degree || n.connections || 0,
       }
     }).sort((a, b) => (b.connections || 0) - (a.connections || 0)).slice(0, 6)
-  }, [nodes, links])
+  }, [displayNodes, links])
 
   /* Dynamic Syndicate Clusters computed from connected components / graph topology */
   const clusters = useMemo(() => {
-    if (nodes.length === 0) return []
+    if (displayNodes.length === 0) return []
 
     // Build adjacency list
     const adj = new Map()
-    nodes.forEach(n => adj.set(n.id, []))
+    displayNodes.forEach(n => adj.set(n.id, []))
     links.forEach(l => {
       const s = l.source?.id || l.source
       const t = l.target?.id || l.target
@@ -197,7 +227,7 @@ export default function Insights() {
     const visited = new Set()
     const detected = []
 
-    nodes.forEach(n => {
+    displayNodes.forEach(n => {
       if (!visited.has(n.id)) {
         const component = []
         const queue = [n.id]
@@ -215,7 +245,7 @@ export default function Insights() {
           })
         }
 
-        const compNodes = component.map(id => nodes.find(x => x.id === id)).filter(Boolean)
+        const compNodes = component.map(id => displayNodes.find(x => x.id === id)).filter(Boolean)
         const highRiskInComp = compNodes.filter(x => x.risk === 'high').length
         const riskScore = Math.min(95, Math.round(50 + (highRiskInComp / Math.max(1, compNodes.length)) * 45))
         const leadNode = compNodes[0]
@@ -234,12 +264,12 @@ export default function Insights() {
     })
 
     return detected.slice(0, 4)
-  }, [nodes, links])
+  }, [displayNodes, links])
 
-  const highRiskCount = nodes.filter(e => e.risk === 'high').length
-  const avgRisk = nodes.length > 0 ? Math.round((highRiskCount / nodes.length) * 100) : 0
-  const networkDensity = nodes.length > 1
-    ? ((2 * links.length) / (nodes.length * (nodes.length - 1))).toFixed(2)
+  const highRiskCount = displayNodes.filter(e => e.risk === 'high').length
+  const avgRisk = displayNodes.length > 0 ? Math.round((highRiskCount / displayNodes.length) * 100) : 0
+  const networkDensity = displayNodes.length > 1
+    ? ((2 * links.length) / (displayNodes.length * (displayNodes.length - 1))).toFixed(2)
     : '0.00'
 
   return (
@@ -271,6 +301,49 @@ export default function Insights() {
             <Download size={15} /> Export Intelligence Dossier
           </button>
         </div>
+      </div>
+
+      {/* Intelligence Category Toolbar (Case, Evidence, Blockchain, CDR) */}
+      <div style={{
+        margin: '16px 0 20px',
+        padding: '12px 16px',
+        background: '#FFFFFF',
+        border: '1px solid var(--border)',
+        borderRadius: 12,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        flexWrap: 'wrap'
+      }}>
+        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginRight: 4 }}>
+          FILTER INTELLIGENCE CATEGORY:
+        </span>
+        {[
+          { id: 'all',        label: '🌐 All Data',           color: 'var(--primary)' },
+          { id: 'case',       label: '📁 Case Dockets',       color: '#7C3AED' },
+          { id: 'evidence',   label: '📄 Document Evidence', color: '#16A34A' },
+          { id: 'blockchain', label: '⛓️ Blockchain Audit',  color: '#D97706' },
+          { id: 'cdr',        label: '📞 CDR Telecom',       color: '#DC2626' },
+        ].map(cat => (
+          <button
+            key={cat.id}
+            onClick={() => setSelectedCategory(cat.id)}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 8,
+              border: `1.5px solid ${selectedCategory === cat.id ? cat.color : 'var(--border)'}`,
+              background: selectedCategory === cat.id ? '#FFFFFF' : 'var(--panel)',
+              color: selectedCategory === cat.id ? cat.color : 'var(--muted)',
+              fontWeight: selectedCategory === cat.id ? 800 : 500,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              boxShadow: selectedCategory === cat.id ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+              transition: 'all 150ms ease'
+            }}
+          >
+            {cat.label}
+          </button>
+        ))}
       </div>
 
       {/* KPI row */}

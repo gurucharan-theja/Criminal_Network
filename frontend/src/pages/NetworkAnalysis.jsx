@@ -49,6 +49,7 @@ export default function NetworkAnalysis() {
 
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedType, setSelectedType] = useState('ALL')
+  const [selectedCategory, setSelectedCategory] = useState('all') // 'all', 'case', 'evidence', 'blockchain', 'cdr'
   const [degreeMode, setDegreeMode] = useState('all') // 'all', '1-hop', '2-hop'
   const [showGuide, setShowGuide] = useState(false)
 
@@ -79,6 +80,35 @@ export default function NetworkAnalysis() {
   const isGraphCleared = typeof localStorage !== 'undefined' && localStorage.getItem('cni_graph_cleared') === 'true'
   const baseEntities = isGraphCleared ? storeEntities : (storeEntities.length > 0 ? storeEntities : DEMO_ENTITIES)
   const baseRelationships = isGraphCleared ? storeRelationships : (storeRelationships.length > 0 ? storeRelationships : DEMO_RELATIONSHIPS)
+
+  // Category Source Filtered Entities (Case, Evidence, Blockchain, CDR)
+  const categoryFilteredEntities = useMemo(() => {
+    if (selectedCategory === 'all') return baseEntities
+
+    return baseEntities.filter(e => {
+      const typeUpper = String(e.type || '').toUpperCase()
+      const roleLower = String(e.role || '').toLowerCase()
+      const sourceCatLower = String(e.sourceCategory || e.sourceFile || '').toLowerCase()
+
+      if (selectedCategory === 'case') {
+        return e.caseId || e.caseNumber || e.caseIds || typeUpper === 'PERSON' || typeUpper === 'SUSPECT' || roleLower.includes('kingpin') || roleLower.includes('suspect')
+      }
+
+      if (selectedCategory === 'evidence') {
+        return sourceCatLower.includes('fir') || sourceCatLower.includes('police') || e.sourceFile || typeUpper === 'LOCATION' || typeUpper === 'ORGANIZATION'
+      }
+
+      if (selectedCategory === 'blockchain') {
+        return typeUpper === 'WALLET' || typeUpper === 'ACCOUNT' || sourceCatLower.includes('financial') || sourceCatLower.includes('blockchain') || roleLower.includes('hawala') || roleLower.includes('vault')
+      }
+
+      if (selectedCategory === 'cdr') {
+        return typeUpper === 'PHONE' || sourceCatLower.includes('cdr') || roleLower.includes('telecom') || roleLower.includes('call') || roleLower.includes('burner')
+      }
+
+      return true
+    })
+  }, [baseEntities, selectedCategory])
 
   // Active selected entity object
   const activeSelectedNode = useMemo(() => {
@@ -118,25 +148,22 @@ export default function NetworkAnalysis() {
     })
 
     return new Set([sId, ...set2Hop])
-  }, [degreeMode, selectedNodeId, baseRelationships])
+  }, [selectedNodeId, degreeMode, baseRelationships])
 
-  // Filter entities based on degree hops, search term, and entity type filter
+  // Compute Final Visible Entities
   const finalFilteredEntities = useMemo(() => {
-    let result = baseEntities
+    let result = categoryFilteredEntities
 
-    // 1. Degree filter restriction
     if (degreeFilteredNodeIds) {
       result = result.filter(e => degreeFilteredNodeIds.has(String(e.id || e.nodeId)))
     }
 
-    // 2. Type filter
     if (selectedType !== 'ALL') {
-      result = result.filter(e => (e.type || 'PERSON').toUpperCase() === selectedType)
+      result = result.filter(e => (e.type || '').toUpperCase() === selectedType.toUpperCase())
     }
 
-    // 3. Search term filter
     if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase()
+      const term = searchTerm.toLowerCase().trim()
       result = result.filter(e =>
         (e.name || e.label || '').toLowerCase().includes(term) ||
         (e.alias || '').toLowerCase().includes(term) ||
@@ -145,7 +172,7 @@ export default function NetworkAnalysis() {
     }
 
     return result
-  }, [baseEntities, degreeFilteredNodeIds, selectedType, searchTerm])
+  }, [categoryFilteredEntities, degreeFilteredNodeIds, selectedType, searchTerm])
 
   const finalFilteredNodeIds = useMemo(() => new Set(finalFilteredEntities.map(e => String(e.id || e.nodeId))), [finalFilteredEntities])
 
@@ -362,12 +389,44 @@ export default function NetworkAnalysis() {
             borderRadius: 12,
             padding: '12px 16px',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
+            flexDirection: 'column',
             gap: 12
           }}>
-            {/* Search Box */}
+            {/* Source Category Toolbar (Case, Evidence, Blockchain, CDR) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em', marginRight: 4 }}>
+                INTELLIGENCE SOURCE:
+              </span>
+              {[
+                { id: 'all',        label: '🌐 All Data',           color: '#2563EB' },
+                { id: 'case',       label: '📁 Case Dockets',       color: '#7C3AED' },
+                { id: 'evidence',   label: '📄 Document Evidence', color: '#16A34A' },
+                { id: 'blockchain', label: '⛓️ Blockchain Audit',  color: '#D97706' },
+                { id: 'cdr',        label: '📞 CDR Telecom',       color: '#DC2626' },
+              ].map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 8,
+                    border: `1.5px solid ${selectedCategory === cat.id ? cat.color : '#CBD5E1'}`,
+                    background: selectedCategory === cat.id ? '#FFFFFF' : '#F8FAFC',
+                    color: selectedCategory === cat.id ? cat.color : '#475569',
+                    fontWeight: selectedCategory === cat.id ? 800 : 500,
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    boxShadow: selectedCategory === cat.id ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
+                    transition: 'all 150ms ease'
+                  }}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+              {/* Search Box */}
             <div style={{ position: 'relative', width: 260 }}>
               <Search size={16} style={{ position: 'absolute', left: 12, top: 10, color: '#94A3B8' }} />
               <input
@@ -467,6 +526,7 @@ export default function NetworkAnalysis() {
               </button>
             </div>
           </div>
+        </div>
 
           {/* D3 Graph Viewport */}
           <div style={{ height: 680, position: 'relative' }}>

@@ -424,7 +424,7 @@ export default function BlockchainAudit() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
         {[
           { label: 'Ledger Height', val: `#${blocks.length}`, color: 'var(--primary-light)', icon: <Layers size={16} /> },
-          { label: 'Consortium Validator Nodes', val: '04 Nodes Active', color: 'var(--success)', icon: <Server size={16} /> },
+          { label: 'Consortium Validator Nodes', val: '00 Nodes Active', color: 'var(--success)', icon: <Server size={16} /> },
           { label: 'Tamper Integrity Status', val: '100% Cryptographically Intact', color: 'var(--success)', icon: <ShieldCheck size={16} /> },
           { label: 'Tracked Illicit Crypto', val: totalCryptoUSD > 0 ? `$${totalCryptoUSD.toLocaleString()} USD` : '$0 USD', color: 'var(--danger)', icon: <Coins size={16} /> },
         ].map((item, idx) => (
