@@ -1,8 +1,7 @@
-﻿import { FolderOpen, AlertTriangle, Clock, Users, Link2, Trash2, ExternalLink, ShieldAlert, ArrowUpRight, Calendar, User, FileText } from 'lucide-react'
+import { FolderOpen, AlertTriangle, Clock, Users, Link2, Trash2, ExternalLink, ShieldAlert, ArrowUpRight, Calendar, User, FileText } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import useUIStore from '../../store/useUIStore'
 import useToast from '../../hooks/useToast'
-import { deleteCase } from '../../api/caseApi'
 import useCaseStore from '../../store/useCaseStore'
 
 const STATUS_CONFIG = {
@@ -21,7 +20,7 @@ export default function CaseCard({ caseData, onDeleted }) {
   const navigate  = useNavigate()
   const toast     = useToast()
   const openModal = useUIStore(s => s.openModal)
-  const loadCases = useCaseStore(s => s.loadCases)
+  const removeCase = useCaseStore(s => s.removeCase)
 
   const statusKey = (caseData.status || 'pending').toLowerCase()
   const riskKey   = (caseData.risk || 'medium').toLowerCase()
@@ -35,17 +34,16 @@ export default function CaseCard({ caseData, onDeleted }) {
     e.stopPropagation()
     openModal({
       title:        'Delete Case Docket',
-      content:      `Are you sure you want to delete case docket "${caseData.title}" (${caseData.caseNumber})? All forensic links associated with this docket will be unlinked.`,
+      content:      `Are you sure you want to delete case docket "${caseData.title}" (${caseData.caseNumber || caseData.id})? All forensic links associated with this docket will be unlinked.`,
       confirmLabel: 'Confirm Delete',
       danger:       true,
       onConfirm:    async () => {
         try {
-          await deleteCase(caseData.id)
+          await removeCase(caseData.id)
           toast.success(`Case "${caseData.title}" deleted`)
-          loadCases()
           if (onDeleted) onDeleted(caseData.id)
-        } catch {
-          toast.error('Failed to delete case')
+        } catch (err) {
+          toast.error('Failed to delete case: ' + err.message)
         }
       },
     })

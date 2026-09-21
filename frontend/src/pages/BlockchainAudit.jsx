@@ -261,6 +261,18 @@ export default function BlockchainAudit() {
     toast.success('Tracked suspect wallet registered on monitoring radar.')
   }
 
+  const handleDeleteBlock = (blockNumber) => {
+    const updated = blocks.filter((b) => b.blockNumber !== blockNumber)
+    updateBlocks(updated)
+    toast.info(`Evidence Block #${blockNumber} removed from view.`)
+  }
+
+  const handleDeleteWallet = (address) => {
+    const updated = wallets.filter((w) => w.address !== address)
+    updateWallets(updated)
+    toast.info('Tracked wallet removed from radar.')
+  }
+
   const filteredBlocks = blocks.filter(b => {
     const q = searchQuery.toLowerCase().trim()
     return (
@@ -524,11 +536,21 @@ export default function BlockchainAudit() {
                     </div>
                   </div>
 
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Investigator Authority Signature</div>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
-                      {block.officerBadge}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Investigator Authority Signature</div>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
+                        {block.officerBadge}
+                      </div>
                     </div>
+                    <button
+                      onClick={() => handleDeleteBlock(block.blockNumber)}
+                      className="btn btn-ghost btn-sm"
+                      style={{ color: 'var(--danger)', padding: 6 }}
+                      title="Delete Evidence Block"
+                    >
+                      <Trash2 size={15} />
+                    </button>
                   </div>
                 </div>
 

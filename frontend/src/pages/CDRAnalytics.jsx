@@ -334,6 +334,12 @@ export default function CDRAnalytics() {
     toast.info('Cleared all saved CDR records from local storage.')
   }
 
+  const handleDeleteSingleRecord = (id) => {
+    const updated = records.filter((r) => r.id !== id)
+    updateRecords(updated)
+    toast.info('CDR record deleted from ledger.')
+  }
+
   // Safe filter logic with null/undefined guards
   const filteredCalls = records.filter((record) => {
     const q = searchQuery.toLowerCase().trim()
@@ -703,7 +709,7 @@ export default function CDRAnalytics() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
                   <thead>
                     <tr style={{ background: 'rgba(234, 235, 238, 0.6)', borderBottom: '1px solid var(--border)' }}>
-                      {['Caller (A-Party)', 'Direction', 'Recipient (B-Party)', 'Timestamp', 'Duration', 'Tower Cell / Location', 'Carrier', 'Threat Flags'].map((h) => (
+                      {['Caller (A-Party)', 'Direction', 'Recipient (B-Party)', 'Timestamp', 'Duration', 'Tower Cell / Location', 'Carrier', 'Threat Flags', 'Action'].map((h) => (
                         <th key={h} style={{ padding: '12px 16px', color: 'var(--muted)', fontWeight: 600, fontSize: '0.72rem', letterSpacing: '0.04em' }}>
                           {h}
                         </th>
@@ -805,6 +811,18 @@ export default function CDRAnalytics() {
                               </span>
                             ))}
                           </div>
+                        </td>
+
+                        {/* Action */}
+                        <td style={{ padding: '12px 16px' }}>
+                          <button
+                            onClick={() => handleDeleteSingleRecord(c.id)}
+                            className="btn btn-ghost btn-sm"
+                            style={{ color: 'var(--danger)', padding: 4 }}
+                            title="Delete Record"
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </td>
                       </tr>
                     ))}

@@ -4,7 +4,7 @@ import {
   Search, FolderOpen, Clock, AlertTriangle,
   Filter, FileText, MapPin, Link2, Users, ShieldAlert,
   ArrowRight, CheckCircle2, Building, Upload, Plus,
-  ExternalLink, Activity, Hash, CalendarDays, Network
+  ExternalLink, Activity, Hash, CalendarDays, Network, Trash2
 } from 'lucide-react'
 
 import EntityCard from '../components/EntityCard'
@@ -83,8 +83,22 @@ export default function Investigation() {
   } = useGraphStore()
 
   const {
-    cases: storeCases
+    cases: storeCases,
+    removeCase
   } = useCaseStore()
+
+  const handleDeleteCase = async (c) => {
+    if (!c) return
+    if (window.confirm(`Are you sure you want to delete case docket "${c.title}" (${c.caseNumber || c.id})?`)) {
+      try {
+        await removeCase(c.id)
+        setCaseFilter('all')
+        navigate('/investigation')
+      } catch (err) {
+        console.error('Failed to delete case:', err)
+      }
+    }
+  }
 
   // Case-specific evidence
   const [caseEvidence, setCaseEvidence] = useState([])
@@ -952,6 +966,22 @@ export default function Investigation() {
                     }}
                   >
                     View Network
+                  </button>
+
+                  <button
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => handleDeleteCase(currentCase)}
+                    style={{
+                      fontSize: '0.75rem',
+                      padding: '4px 10px',
+                      color: 'var(--danger)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <Trash2 size={12} />
+                    Delete Docket
                   </button>
                 </div>
               </div>
